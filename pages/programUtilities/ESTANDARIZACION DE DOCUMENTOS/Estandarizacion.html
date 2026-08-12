@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Escáner CI PRO v3</title>
+
+<!-- =====================================================
+     ESCÁNER CI PRO v2
+     Versión con herramientas avanzadas de edición documental
+
+     FUNCIONALIDADES:
+     - Carga de PDF e imágenes
+     - Selección con 4 puntos (arrastre de puntos, lados e interior)
+     - NUEVO: Rotación de lienzo (slider + botones 90°)
+     - NUEVO: Enderezado automático (corrección de inclinación)
+     - NUEVO: Corrección de perspectiva (transformación proyectiva)
+     - NUEVO: Movimiento de selección completa
+     - NUEVO: Panel de herramientas colapsable
+     - Exportación CI, CN, TP en PDF a máxima resolución
+
+     LIBRERÍAS:
+     - pdf.js  v2.16  → renderizado de PDFs en canvas
+     - jsPDF   v2.5   → generación de PDFs de salida
+     - math.js → álgebra para corrección de perspectiva
+       (implementada inline para evitar dependencia externa)
+
+     ARQUITECTURA:
+     - Todo en un único archivo HTML autocontenido
+     - Código dividido en secciones claramente comentadas
+     - Variables de estado globales bien definidas
+     - Funciones puras para las transformaciones matemáticas
+
+     CÓMO ESCALAR:
+     - Extraer cada sección en su propio .js para modularizar
+     - Añadir backend (Node/Python) para OCR o AI straighten
+     - Integrar OpenCV.js para detección automática de bordes
+===================================================== -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  /* ============ RESET & BASE ============ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --azul:        #1a6fc4;
+    --azul-claro:  #4a9fe8;
+    --azul-oscuro: #0d4a8a;
+    --verde:       #1aa063;
+    --rojo:        #d03535;
+    --gris-claro:  #f0f2f5;
+    --gris-borde:  #cdd1d8;
+    --texto:       #1e2532;
+    --sombra:      0 2px 10px rgba(0,0,0,0.13);
+    --radio:       8px;
+  }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--gris-claro);
+    color: var(--texto);
+    min-height: 100vh;
+  }
+
+  /* ============ HEADER ============ */
+  #header {
+    background: linear-gradient(135deg, var(--azul-oscuro), var(--azul));
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--sombra);
+  }
+  #header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; }
+  #header .badge {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  /* ============ LAYOUT PRINCIPAL ============ */
+  #layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  /* ============ BARRA DE CARGA Y PAGINACIÓN ============ */
+  #barraTop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: white;
+    border-radius: var(--radio);
+    padding: 10px 16px;
+    box-shadow: var(--sombra);
+    width: 100%;
+    max-width: 900px;
+  }
+
+  /* ============ PANEL DE HERRAMIENTAS ============ */
+  #panelHerramientas {
+    background: white;
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    width: 100%;
+    max-width: 900px;
+    overflow: hidden;
+  }
+
+  #panelToggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #f7f9fc;
+    border-bottom: 1px solid var(--gris-borde);
+    cursor: pointer;
+    user-select: none;
+  }
+  #panelToggle:hover { background: #eef2f8; }
+  #panelToggle .titulo { font-weight: 700; font-size: 0.9rem; color: var(--azul-oscuro); }
+  #panelToggle .flecha { margin-left: auto; transition: transform 0.25s; font-size: 0.8rem; }
+  #panelToggle.abierto .flecha { transform: rotate(180deg); }
+
+  #panelContenido {
+    display: none;
+    padding: 14px 16px;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  #panelContenido.visible { display: flex; }
+
+  /* ============ GRUPOS DE HERRAMIENTAS ============ */
+  .grupoHerramienta {
+    background: var(--gris-claro);
+    border-radius: var(--radio);
+    padding: 12px 14px;
+    flex: 1 1 200px;
+    min-width: 190px;
+  }
+  .grupoHerramienta h3 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--azul-oscuro);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--azul-claro);
+  }
+  .grupoHerramienta .fila {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .grupoHerramienta label {
+    font-size: 0.78rem;
+    color: #555;
+    min-width: 55px;
+  }
+
+  /* ============ SLIDER DE ROTACIÓN ============ */
+  #sliderRotacion {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--azul) 0%, var(--azul) 50%, var(--gris-borde) 50%);
+    outline: none;
+    cursor: pointer;
+  }
+  #sliderRotacion::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--azul);
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  #valorRotacion {
+    min-width: 42px;
+    text-align: right;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--azul);
+  }
+
+  /* ============ BOTONES ============ */
+  button {
+    padding: 7px 13px;
+    border: none;
+    border-radius: var(--radio);
+    background: var(--azul);
+    color: white;
+    cursor: pointer;
+    font-size: 0.83rem;
+    font-weight: 600;
+    transition: background 0.18s, transform 0.1s;
+    white-space: nowrap;
+  }
+  button:hover  { background: var(--azul-oscuro); }
+  button:active { transform: scale(0.97); }
+
+  button.verde  { background: var(--verde); }
+  button.verde:hover  { background: #138a53; }
+
+  button.rojo   { background: var(--rojo); }
+  button.rojo:hover   { background: #b02020; }
+
+  button.gris   { background: #6b7280; }
+  button.gris:hover   { background: #4b5563; }
+
+  button.mini   { padding: 5px 9px; font-size: 0.78rem; }
+  button.grande { padding: 9px 20px; font-size: 0.9rem; font-weight: 700; }
+
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ============ CANVAS WRAPPER ============ */
+  #canvasWrapper {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    height: 70vh;
+    max-height: 80vh;
+    border-radius: var(--radio);
+    overflow: auto;
+    box-shadow: var(--sombra);
+    background: #e9edf2;
+  }
+
+  canvas#canvas {
+    display: block;
+    cursor: crosshair;
+    border-radius: var(--radio);
+    /* El tamaño visual (width/height en px) se controla desde JS para el zoom;
+       el tamaño real (atributos width/height) define la resolución/calidad
+       y las coordenadas usadas por las herramientas de edición. */
+  }
+
+  /* ============ ESTADO / HINTS ============ */
+  #statusBar {
+    background: white;
+    border-radius: var(--radio);
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: #555;
+    box-shadow: var(--sombra);
+    max-width: 900px;
+    width: 100%;
+    text-align: center;
+  }
+  #statusBar span { font-weight: 700; color: var(--azul); }
+
+  /* ============ BARRA ACCIONES ============ */
+  #barraAcciones {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  /* ============ RECORTES ============ */
+  #contenedorRecortes {
+    max-width: 1200px;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .boxRecorte {
+    background: white;
+    border-radius: var(--radio);
+    padding: 10px;
+    box-shadow: var(--sombra);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .boxRecorte canvas {
+    border-radius: 6px;
+    border: 2px solid var(--verde);
+    max-width: 300px;
+    height: auto;
+    display: block;
+  }
+  .boxRecorte .btnsFila {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* ============ SEPARADOR INFO ============ */
+  #infoPagina {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #444;
+    padding: 0 4px;
+  }
+
+  /* ============ INDICADOR DE MODO ============ */
+  #modoIndicador {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(26,111,196,0.88);
+    color: white;
+    font-size: 0.73rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 12px;
+    pointer-events: none;
+    letter-spacing: 0.4px;
+    display: none;
+  }
+
+  /* ============ SLIDERS DE EDICIÓN ============ */
+  .slider-edicion {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 3px;
+    background: var(--gris-borde);
+    outline: none;
+    cursor: pointer;
+    min-width: 80px;
+  }
+  .slider-edicion::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--azul);
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .val-edicion {
+    min-width: 38px;
+    text-align: right;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--azul);
+  }
+
+  /* Botón activo (filtro aplicado) */
+  button.activo {
+    background: #7c3aed;
+    box-shadow: 0 0 0 2px #c4b5fd;
+  }
+  button.activo:hover { background: #5b21b6; }
+
+  /* Botón naranja para presets */
+  button.naranja { background: #d97706; }
+  button.naranja:hover { background: #b45309; }
+</style>
+</head>
+
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<div id="header">
+  <h1>📄 Escáner CI PRO</h1>
+  <span class="badge">v3.0</span>
+</div>
+
+<!-- ==================== LAYOUT ==================== -->
+<div id="layout">
+
+  <!-- ===== BARRA SUPERIOR: CARGA + PAGINACIÓN ===== -->
+  <div id="barraTop">
+    <input type="file" id="fileInput" accept="application/pdf,image/*">
+    <button onclick="paginaAnterior()" id="btnAnterior" disabled>⬅ Anterior</button>
+    <span id="infoPagina">Página 0 de 0</span>
+    <button onclick="paginaSiguiente()" id="btnSiguiente" disabled>Siguiente ➡</button>
+  </div>
+
+  <!-- ===== PANEL DE HERRAMIENTAS AVANZADAS ===== -->
+  <div id="panelHerramientas">
+
+    <div id="panelToggle" onclick="togglePanel(this)">
+      <span>🛠</span>
+      <span class="titulo">Herramientas Avanzadas</span>
+      <span class="flecha">▼</span>
+    </div>
+
+    <div id="panelContenido">
+
+      <!-- GRUPO 1: ROTACIÓN DE LIENZO -->
+      <div class="grupoHerramienta">
+        <h3>🔄 Rotación de Lienzo</h3>
+        <div class="fila">
+          <label>Ángulo</label>
+          <input type="range" id="sliderRotacion"
+                 min="-180" max="180" value="0" step="0.5"
+                 oninput="actualizarRotacion(this.value)">
+          <span id="valorRotacion">0°</span>
+        </div>
+        <div class="fila">
+          <button class="mini" onclick="rotar90(-1)" title="Rotar 90° izquierda">↺ 90°</button>
+          <button class="mini" onclick="rotar90(1)"  title="Rotar 90° derecha">↻ 90°</button>
+          <button class="mini gris" onclick="resetRotacion()" title="Resetear rotación">⟳ Reset</button>
+        </div>
+        <div style="font-size:0.72rem;color:#888;margin-top:4px;">
+          Corrige imágenes tomadas con el celular o escáner inclinado.
+        </div>
+      </div>
+
+      <!-- GRUPO 2: ENDEREZADO Y PERSPECTIVA -->
+      <div class="grupoHerramienta">
+        <h3>📐 Corrección de Documento</h3>
+        <div class="fila">
+          <button class="verde" onclick="enderezarSeleccion()"
+                  title="Detecta la inclinación de la selección y la corrige automáticamente">
+            ✨ Enderezar automático
+          </button>
+        </div>
+        <div class="fila">
+          <button onclick="corregirPerspectiva()"
+                  title="Transforma la selección irregular (trapecio) en un rectángulo perfecto">
+            🔲 Corregir perspectiva
+          </button>
+        </div>
+        <div style="font-size:0.72rem;color:#888;margin-top:4px;">
+          Enderezar: corrige inclinación de la selección.<br>
+          Perspectiva: corrige fotos tomadas en ángulo.
+        </div>
+      </div>
+
+      <!-- GRUPO 3: SELECCIÓN -->
+      <div class="grupoHerramienta">
+        <h3>🖱 Selección</h3>
+        <div class="fila">
+          <button class="mini" onclick="resetSeleccion()">⬛ Reset selección</button>
+          <button class="mini verde" onclick="seleccionarTodo()" title="Marca toda la imagen lista para recortar">⬜ Seleccionar todo</button>
+        </div>
+        <div class="fila" style="font-size:0.78rem;color:#555;line-height:1.5;">
+          • Arrastrar <b>punto</b> = mover ese vértice<br>
+          • Arrastrar <b>lado</b> = mover ese borde<br>
+          • Arrastrar <b>interior</b> = mover todo el marco
+        </div>
+      </div>
+
+      <!-- GRUPO 4: CALIDAD Y EXPORTACIÓN -->
+      <div class="grupoHerramienta">
+        <h3>🖨 Calidad de Exportación</h3>
+        <div class="fila">
+          <label>DPI</label>
+          <select id="selectDPI" style="padding:4px 8px;border-radius:5px;border:1px solid #ccc;font-size:0.82rem;">
+            <option value="1">Pantalla (72 dpi)</option>
+            <option value="2">Alta (150 dpi)</option>
+            <option value="3" selected>Profesional (300 dpi equiv.)</option>
+            <option value="4">Máxima (400 dpi equiv.)</option>
+          </select>
+        </div>
+        <div style="font-size:0.72rem;color:#888;margin-top:4px;">
+          Resolución interna del recorte generado.
+        </div>
+      </div>
+
+      <!-- GRUPO 5: EDICIÓN DE IMAGEN -->
+      <!--
+        Todos los ajustes se aplican en tiempo real sobre el canvas.
+        Se usan CSS filter para brillo/contraste/saturación y
+        procesamiento de píxeles manual para nitidez y escala de grises.
+        Los valores se guardan en el objeto `ajustesImagen` y se
+        reaaplican siempre que se redibuja el canvas (dibujar()).
+      -->
+      <div class="grupoHerramienta" style="min-width:260px;flex:2 1 260px;">
+        <h3>🎨 Edición de Imagen</h3>
+
+        <!-- Brillo -->
+        <div class="fila">
+          <label>☀ Brillo</label>
+          <input type="range" class="slider-edicion" id="slBrillo"
+                 min="-100" max="100" value="0" step="1"
+                 oninput="aplicarAjuste('brillo', this.value)">
+          <span class="val-edicion" id="vBrillo">0</span>
+        </div>
+
+        <!-- Contraste -->
+        <div class="fila">
+          <label>◑ Contraste</label>
+          <input type="range" class="slider-edicion" id="slContraste"
+                 min="-100" max="100" value="0" step="1"
+                 oninput="aplicarAjuste('contraste', this.value)">
+          <span class="val-edicion" id="vContraste">0</span>
+        </div>
+
+        <!-- Nitidez -->
+        <div class="fila">
+          <label>🔍 Nitidez</label>
+          <input type="range" class="slider-edicion" id="slNitidez"
+                 min="0" max="10" value="0" step="1"
+                 oninput="aplicarAjuste('nitidez', this.value)">
+          <span class="val-edicion" id="vNitidez">0</span>
+        </div>
+
+        <!-- Saturación -->
+        <div class="fila">
+          <label>🌈 Saturac.</label>
+          <input type="range" class="slider-edicion" id="slSaturacion"
+                 min="-100" max="100" value="0" step="1"
+                 oninput="aplicarAjuste('saturacion', this.value)">
+          <span class="val-edicion" id="vSaturacion">0</span>
+        </div>
+
+        <!-- Temperatura -->
+        <div class="fila">
+          <label>🌡 Temp.</label>
+          <input type="range" class="slider-edicion" id="slTemp"
+                 min="-50" max="50" value="0" step="1"
+                 oninput="aplicarAjuste('temperatura', this.value)">
+          <span class="val-edicion" id="vTemp">0</span>
+        </div>
+
+        <!-- Botones de filtro rápido -->
+        <div class="fila" style="flex-wrap:wrap;gap:5px;margin-top:4px;">
+          <button class="mini" id="btnGris" onclick="toggleGris()" title="Escala de grises">⬜ Grises</button>
+          <button class="mini" id="btnSepia" onclick="toggleSepia()" title="Efecto sepia (documento antiguo)">🟤 Sepia</button>
+          <button class="mini naranja" onclick="presetDocumento()" title="Preset optimizado para documentos: alto contraste, nitidez máxima">📄 Doc</button>
+          <button class="mini gris" onclick="resetAjustes()" title="Resetear todos los ajustes">⟳ Reset</button>
+        </div>
+      </div>
+
+    </div><!-- fin panelContenido -->
+  </div><!-- fin panelHerramientas -->
+
+  <!-- ===== STATUS BAR ===== -->
+  <div id="statusBar">
+    Carga una imagen o PDF para comenzar.
+  </div>
+
+  <!-- ===== CANVAS CON INDICADOR ===== -->
+  <div id="canvasWrapper">
+    <canvas id="canvas"></canvas>
+    <div id="modoIndicador">MOVIENDO SELECCIÓN</div>
+  </div>
+
+  <!-- ===== CONTROLES DE ZOOM (solo vista, no afectan la imagen real) ===== -->
+  <div style="display:flex;gap:8px;justify-content:center;">
+    <button onclick="zoomOut()" title="Alejar">➖ Alejar</button>
+    <button onclick="zoomReset()" title="Restablecer">⟲ 100%</button>
+    <button onclick="zoomIn()" title="Acercar">➕ Acercar</button>
+  </div>
+
+  <!-- ===== ACCIONES PRINCIPALES ===== -->
+  <!--
+    IMPORTANTE: Se mantiene la posición y el orden original de los botones.
+    Solo se añade el botón de recortar y exportar en la misma posición original.
+  -->
+  <div id="barraAcciones">
+    <button class="grande verde" onclick="recortar()">✂ Recortar</button>
+    <button class="grande" onclick="exportarCI()">CI</button>
+    <button class="grande" onclick="exportarCN()">CN</button>
+    <button class="grande" onclick="exportarTP()">TP</button>
+    <button class="grande" style="background:#7c3aed;" onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#7c3aed'" onclick="exportarTPCarta()">TP Carta</button>
+  </div>
+
+  <!-- Selector de tipo de recorte (controla bordes redondeados) -->
+  <div style="display:flex;align-items:center;gap:10px;background:white;border-radius:var(--radio);padding:8px 16px;box-shadow:var(--sombra);max-width:900px;width:100%;">
+    <span style="font-size:0.82rem;font-weight:700;color:#555;">Tipo de recorte:</span>
+    <label style="font-size:0.82rem;cursor:pointer;display:flex;align-items:center;gap:4px;">
+      <input type="radio" name="tipoRecorte" value="CI" checked onchange="tipoRecorteActual=this.value"> CI (redondeado)
+    </label>
+    <label style="font-size:0.82rem;cursor:pointer;display:flex;align-items:center;gap:4px;">
+      <input type="radio" name="tipoRecorte" value="CN" onchange="tipoRecorteActual=this.value"> CN (recto)
+    </label>
+    <label style="font-size:0.82rem;cursor:pointer;display:flex;align-items:center;gap:4px;">
+      <input type="radio" name="tipoRecorte" value="TP" onchange="tipoRecorteActual=this.value"> TP / TP Carta (recto)
+    </label>
+    <span style="font-size:0.75rem;color:#888;margin-left:8px;">Solo CI lleva bordes redondeados.</span>
+  </div>
+
+  <!-- ===== RECORTES GENERADOS ===== -->
+  <div id="contenedorRecortes"></div>
+
+</div><!-- fin layout -->
+
+
+<!-- =====================================================
+     SCRIPT PRINCIPAL
+     Secciones:
+     1.  Variables globales
+     2.  Carga de archivos (PDF e imagen)
+     3.  Renderizado PDF con pdf.js
+     4.  Inicialización y dibujo del canvas
+     5.  Interacción del mouse (puntos, lados, interior)
+     6.  Rotación de lienzo
+     7.  Enderezado automático
+     8.  Corrección de perspectiva (warp proyectivo)
+     9.  *** NUEVO: Edición de imagen (brillo, contraste, nitidez, etc.) ***
+     10. *** NUEVO: seleccionarTodo() post-perspectiva ***
+     11. Recorte con relleno redondeado
+     12. Exportación a PDF (CI, CN, TP)
+     13. UI helpers
+===================================================== -->
+<script>
+
+// ============================================================
+// 1. VARIABLES GLOBALES
+// ============================================================
+
+const input   = document.getElementById('fileInput');
+const canvas  = document.getElementById('canvas');
+const ctx     = canvas.getContext('2d');
+
+/** Imagen fuente actual (puede provenir de PDF o carga directa) */
+let imagenBase   = null;
+
+/** Ángulo de rotación global del lienzo en grados */
+let anguloLienzo = 0;
+
+/**
+ * 4 puntos de la selección, en orden:
+ *   0 = superior-izquierdo
+ *   1 = superior-derecho
+ *   2 = inferior-derecho
+ *   3 = inferior-izquierdo
+ */
+let puntos = [];
+
+/** Índice del punto que se está arrastrando (-1 = ninguno) */
+let dragging = -1;
+
+/**
+ * Modo de interacción actual:
+ *   "punto"    → se mueve un vértice
+ *   "lado"     → se mueve un borde
+ *   "interior" → se mueve toda la selección
+ *   null       → sin interacción
+ */
+let modo = null;
+
+/** Para mover toda la selección: posición del mouse al inicio del arrastre */
+let dragStart = { x: 0, y: 0 };
+
+/** Copia de los puntos al inicio de un arrastre de interior */
+let puntosCopia = [];
+
+/** Array de canvas con los recortes generados */
+let recortes = [];
+
+/**
+ * Tipo de recorte activo: 'CI' | 'CN' | 'TP'
+ * CI  → bordes redondeados + fondo gris
+ * CN  → bordes rectos + fondo gris
+ * TP  → bordes rectos + fondo gris
+ */
+let tipoRecorteActual = 'CI';
+
+// Estado del PDF
+let pdfDoc       = null;
+let paginaActual = 1;
+let totalPaginas = 0;
+
+/**
+ * ajustesImagen
+ * -------------
+ * Objeto de estado para todos los ajustes de imagen.
+ * Se aplica en cada llamada a dibujar() via CSS filter + pixel ops.
+ *
+ * brillo:      -100 a +100  (CSS: brightness)
+ * contraste:   -100 a +100  (CSS: contrast)
+ * saturacion:  -100 a +100  (CSS: saturate)
+ * temperatura: -50  a +50   (manipulación manual de canales R/B)
+ * nitidez:     0    a 10    (kernel de convolución unsharp mask)
+ * grises:      true/false   (CSS: grayscale)
+ * sepia:       true/false   (CSS: sepia)
+ */
+let ajustesImagen = {
+  brillo: 0, contraste: 0, saturacion: 0,
+  temperatura: 0, nitidez: 0,
+  grises: false, sepia: false
+};
+
+
+// ============================================================
+// 2. CARGA DE ARCHIVOS
+// ============================================================
+
+input.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  anguloLienzo = 0;
+  syncSlider();
+
+  if (file.type === 'application/pdf') cargarPDF(file);
+  else cargarImagen(file);
+});
+
+function cargarImagen(file) {
+  const img = new Image();
+  img.onload = function() {
+    imagenBase = img;
+    renderConRotacion(); // dibuja con rotación actual (0)
+    setStatus('Imagen cargada. Ajusta la selección y usa las herramientas.');
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+
+// ============================================================
+// 3. CARGA Y RENDERIZADO DE PDF
+// ============================================================
+
+function cargarPDF(file) {
+  const reader = new FileReader();
+  reader.onload = function() {
+    const typedarray = new Uint8Array(this.result);
+    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+      pdfDoc       = pdf;
+      totalPaginas = pdf.numPages;
+      paginaActual = 1;
+      renderPagina(paginaActual);
+      setStatus('PDF cargado. Navega las páginas con ← →');
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPagina(num) {
+  // Escala según DPI seleccionado
+  const escala = parseFloat(document.getElementById('selectDPI').value) * 1.5;
+
+  pdfDoc.getPage(num).then(page => {
+    const viewport = page.getViewport({ scale: escala });
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width  = viewport.width;
+    tempCanvas.height = viewport.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    page.render({ canvasContext: tempCtx, viewport }).promise.then(() => {
+      const img  = new Image();
+      img.src    = tempCanvas.toDataURL('image/png');
+      img.onload = () => {
+        imagenBase = img;
+        renderConRotacion();
+        actualizarInfoPagina(num);
+        setStatus(`Página ${num} de ${totalPaginas} cargada.`);
+      };
+    });
+  });
+}
+
+function paginaSiguiente() {
+  if (paginaActual < totalPaginas) { paginaActual++; renderPagina(paginaActual); }
+}
+function paginaAnterior() {
+  if (paginaActual > 1) { paginaActual--; renderPagina(paginaActual); }
+}
+
+
+// ============================================================
+// 4. INICIALIZACIÓN Y DIBUJO
+// ============================================================
+
+/**
+ * renderConRotacion()
+ * -------------------
+ * Redimensiona el canvas para contener la imagen rotada,
+ * pinta la imagen girada y reinicializa los puntos de selección.
+ * Es el punto de entrada principal tras cargar o rotar.
+ */
+function renderConRotacion() {
+  if (!imagenBase) return;
+
+  const rad  = anguloLienzo * Math.PI / 180;
+  const cos  = Math.abs(Math.cos(rad));
+  const sin  = Math.abs(Math.sin(rad));
+  const W    = imagenBase.width;
+  const H    = imagenBase.height;
+
+  // El canvas debe poder contener la imagen rotada sin recortar
+  const newW = Math.round(W * cos + H * sin);
+  const newH = Math.round(W * sin + H * cos);
+
+  canvas.width  = newW;
+  canvas.height = newH;
+  ajustarZoomInicial();
+
+  // Dibujar imagen centrada y rotada
+  ctx.save();
+  ctx.translate(newW / 2, newH / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(imagenBase, -W / 2, -H / 2, W, H);
+  ctx.restore();
+
+  // Guardar resultado como nueva base de trabajo
+  const snapImg = new Image();
+  snapImg.src   = canvas.toDataURL('image/png');
+  snapImg.onload = () => {
+    // Usamos la imagen rotada como base para los recortes
+    // (no reasignamos imagenBase para no perder el original)
+    window._imagenRotada = snapImg;
+    inicializarPuntos();
+  };
+}
+
+/**
+ * inicializarPuntos()
+ * -------------------
+ * Coloca los 4 vértices en las esquinas del canvas con un margen.
+ */
+function inicializarPuntos() {
+  const m = Math.min(40, canvas.width * 0.05, canvas.height * 0.05);
+  puntos = [
+    { x: m,                  y: m },
+    { x: canvas.width  - m,  y: m },
+    { x: canvas.width  - m,  y: canvas.height - m },
+    { x: m,                  y: canvas.height - m }
+  ];
+  dibujar();
+  habilitarNavPDF();
+}
+
+/**
+ * resetSeleccion()
+ * ----------------
+ * Vuelve los puntos a las esquinas originales.
+ */
+function resetSeleccion() {
+  if (!imagenBase) return;
+  inicializarPuntos();
+  setStatus('Selección reiniciada.');
+}
+
+/**
+ * dibujar()
+ * ---------
+ * Redibuja el canvas: imagen (con ajustes aplicados) + selección.
+ * Los ajustes de imagen se aplican en dos capas:
+ *   1. CSS filter (brillo, contraste, saturación, grises, sepia) → GPU, sin costo
+ *   2. Procesamiento de píxeles (temperatura, nitidez) → CPU, se aplica solo
+ *      cuando nitidez > 0 o temperatura ≠ 0.
+ */
+function dibujar() {
+  const src = window._imagenRotada || imagenBase;
+  if (!src) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // — Construir string de CSS filter —
+  const aj = ajustesImagen;
+  const bri = 1 + aj.brillo     / 100;       // 0..2
+  const con = 1 + aj.contraste  / 100;       // 0..2
+  const sat = aj.grises ? 0 : Math.max(0, 1 + aj.saturacion / 100);
+  const sep = aj.sepia ? Math.min(1, Math.max(0, 0.8)) : 0;
+
+  ctx.filter = `brightness(${bri.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) sepia(${sep})`;
+  ctx.drawImage(src, 0, 0);
+  ctx.filter = 'none';
+
+  // — Procesamiento de píxeles: temperatura y nitidez —
+  if (aj.temperatura !== 0 || aj.nitidez > 0) {
+    aplicarFiltrosPixel();
+  }
+
+  // — Área seleccionada con relleno semitransparente —
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(puntos[0].x, puntos[0].y);
+  puntos.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.fillStyle   = 'rgba(74,159,232,0.12)';
+  ctx.fill();
+  ctx.restore();
+
+  // — Líneas de contorno —
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur  = 6;
+  ctx.strokeStyle = 'rgba(255,60,60,0.9)';
+  ctx.lineWidth   = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(puntos[0].x, puntos[0].y);
+  puntos.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // — Puntos de control —
+  puntos.forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+    ctx.fillStyle   = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle   = '#ff3c3c';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+  });
+
+  // — Punto central (para mover toda la selección) —
+  const cx = puntos.reduce((a, p) => a + p.x, 0) / 4;
+  const cy = puntos.reduce((a, p) => a + p.y, 0) / 4;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+  ctx.fillStyle   = 'rgba(74,159,232,0.7)';
+  ctx.fill();
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+}
+
+
+// ============================================================
+// 5. INTERACCIÓN DEL MOUSE
+//    Soporta: punto, lado, interior (movimiento completo)
+// ============================================================
+
+canvas.addEventListener('mousedown', e => {
+  const { x, y } = posCanvas(e);
+  dragging = -1;
+  modo     = null;
+
+  // 5a. ¿Toca un punto de control?
+  puntos.forEach((p, i) => {
+    if (Math.hypot(p.x - x, p.y - y) < 12) {
+      dragging = i;
+      modo     = 'punto';
+    }
+  });
+
+  // 5b. ¿Toca un lado?
+  if (!modo) {
+    if      (cercaLinea(puntos[0], puntos[1], x, y)) { dragging = 'top';    modo = 'lado'; }
+    else if (cercaLinea(puntos[2], puntos[3], x, y)) { dragging = 'bottom'; modo = 'lado'; }
+    else if (cercaLinea(puntos[0], puntos[3], x, y)) { dragging = 'left';   modo = 'lado'; }
+    else if (cercaLinea(puntos[1], puntos[2], x, y)) { dragging = 'right';  modo = 'lado'; }
+  }
+
+  // 5c. ¿Está dentro del polígono? → mover toda la selección
+  if (!modo && puntoDentroPoligono(x, y, puntos)) {
+    modo         = 'interior';
+    dragStart    = { x, y };
+    puntosCopia  = puntos.map(p => ({ ...p }));
+    document.getElementById('modoIndicador').style.display = 'block';
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  const { x, y } = posCanvas(e);
+  canvas.style.cursor = detectarCursor(x, y);
+
+  if (!modo) return;
+
+  if (modo === 'punto') {
+    puntos[dragging] = { x, y };
+  }
+
+  if (modo === 'lado') {
+    if (dragging === 'top')    { puntos[0].y = y; puntos[1].y = y; }
+    if (dragging === 'bottom') { puntos[2].y = y; puntos[3].y = y; }
+    if (dragging === 'left')   { puntos[0].x = x; puntos[3].x = x; }
+    if (dragging === 'right')  { puntos[1].x = x; puntos[2].x = x; }
+  }
+
+  // Mover toda la selección manteniendo forma y dimensiones
+  if (modo === 'interior') {
+    const dx = x - dragStart.x;
+    const dy = y - dragStart.y;
+    puntos = puntosCopia.map(p => ({ x: p.x + dx, y: p.y + dy }));
+  }
+
+  dibujar();
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragging = -1;
+  modo     = null;
+  document.getElementById('modoIndicador').style.display = 'none';
+});
+
+canvas.addEventListener('mouseleave', () => {
+  dragging = -1;
+  modo     = null;
+  document.getElementById('modoIndicador').style.display = 'none';
+});
+
+// Touch support (móvil)
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  simulateMouse(e.touches[0], 'mousedown');
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  simulateMouse(e.touches[0], 'mousemove');
+}, { passive: false });
+canvas.addEventListener('touchend', () => {
+  dragging = -1; modo = null;
+  document.getElementById('modoIndicador').style.display = 'none';
+});
+
+// ---- Zoom y Pan profesionales (solo afectan la VISUALIZACIÓN) ----
+// canvasZoom: factor elegido por el usuario (1 = "ajustar a pantalla")
+// zoomBase  : factor de "ajuste a pantalla" calculado según el tamaño real
+//             del canvas y el contenedor disponible.
+// El tamaño real del canvas (canvas.width/height, en píxeles) NUNCA cambia
+// por el zoom, por lo que la calidad, resolución y coordenadas de las
+// herramientas (recorte, selección, etc.) permanecen exactas.
+let canvasZoom = 1;
+let zoomBase   = 1;
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 5;
+const ZOOM_STEP = 0.15;
+const WHEEL_FACTOR = 1.12;
+
+const wrapperZoom = document.getElementById('canvasWrapper');
+
+/** Aplica el tamaño visual (CSS) del canvas según zoomBase * canvasZoom */
+function aplicarTamanoCanvas() {
+  if (!canvas.width || !canvas.height) return;
+  const escala = zoomBase * canvasZoom;
+  canvas.style.width  = (canvas.width  * escala) + 'px';
+  canvas.style.height = (canvas.height * escala) + 'px';
+}
+
+/**
+ * Calcula zoomBase para que la imagen completa entre en el contenedor
+ * (sin recortarla) y resetea el zoom del usuario a 1 ("ajustar").
+ * Se llama cada vez que se carga/recalcula la imagen base del canvas.
+ */
+function ajustarZoomInicial() {
+  if (!canvas.width || !canvas.height) return;
+  const maxW = wrapperZoom.clientWidth  || 1;
+  const maxH = wrapperZoom.clientHeight || 1;
+  zoomBase = Math.min(maxW / canvas.width, maxH / canvas.height, 1);
+  if (!isFinite(zoomBase) || zoomBase <= 0) zoomBase = 1;
+  canvasZoom = 1;
+  aplicarTamanoCanvas();
+  wrapperZoom.scrollLeft = 0;
+  wrapperZoom.scrollTop  = 0;
+}
+
+/**
+ * Aplica un factor de zoom manteniendo fijo el punto (clientX, clientY)
+ * bajo el cursor (o el centro del contenedor si no se especifica).
+ */
+function zoomAt(factor, clientX, clientY) {
+  const rect = wrapperZoom.getBoundingClientRect();
+  const px = (clientX !== undefined) ? clientX - rect.left : rect.width  / 2;
+  const py = (clientY !== undefined) ? clientY - rect.top  : rect.height / 2;
+
+  const oldEscala = zoomBase * canvasZoom;
+  let nuevoZoom   = canvasZoom * factor;
+  nuevoZoom       = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nuevoZoom));
+  if (nuevoZoom === canvasZoom) return;
+  canvasZoom = nuevoZoom;
+  const nuevaEscala = zoomBase * canvasZoom;
+
+  const contenidoX = wrapperZoom.scrollLeft + px;
+  const contenidoY = wrapperZoom.scrollTop  + py;
+
+  aplicarTamanoCanvas();
+
+  const ratio = nuevaEscala / oldEscala;
+  wrapperZoom.scrollLeft = contenidoX * ratio - px;
+  wrapperZoom.scrollTop  = contenidoY * ratio - py;
+}
+
+function zoomIn()  { zoomAt(1 + ZOOM_STEP); }
+function zoomOut() { zoomAt(1 / (1 + ZOOM_STEP)); }
+function zoomReset() { ajustarZoomInicial(); }
+
+// Zoom con la rueda del mouse, centrado en el cursor (fluido y preciso)
+wrapperZoom.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? WHEEL_FACTOR : 1 / WHEEL_FACTOR;
+  zoomAt(factor, e.clientX, e.clientY);
+}, { passive: false });
+
+// Re-ajustar el "ajuste a pantalla" si cambia el tamaño de la ventana
+window.addEventListener('resize', () => {
+  if (canvas.width && canvas.height) ajustarZoomInicial();
+});
+
+// ---- Pan (desplazamiento) con espacio + arrastre, o botón central ----
+let espacioPresionado = false;
+let panActivo = false;
+let panStart  = { x: 0, y: 0, scrollLeft: 0, scrollTop: 0 };
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !espacioPresionado) {
+    espacioPresionado = true;
+    canvas.style.cursor = 'grab';
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') {
+    espacioPresionado = false;
+    if (!panActivo) canvas.style.cursor = 'crosshair';
+  }
+});
+
+wrapperZoom.addEventListener('mousedown', e => {
+  if (espacioPresionado || e.button === 1) {
+    e.preventDefault();
+    panActivo = true;
+    canvas.style.cursor = 'grabbing';
+    panStart = {
+      x: e.clientX, y: e.clientY,
+      scrollLeft: wrapperZoom.scrollLeft, scrollTop: wrapperZoom.scrollTop
+    };
+  }
+});
+window.addEventListener('mousemove', e => {
+  if (!panActivo) return;
+  wrapperZoom.scrollLeft = panStart.scrollLeft - (e.clientX - panStart.x);
+  wrapperZoom.scrollTop  = panStart.scrollTop  - (e.clientY - panStart.y);
+});
+window.addEventListener('mouseup', () => {
+  if (panActivo) {
+    panActivo = false;
+    canvas.style.cursor = espacioPresionado ? 'grab' : 'crosshair';
+  }
+});
+
+function simulateMouse(touch, type) {
+  const evt = new MouseEvent(type, {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  canvas.dispatchEvent(evt);
+}
+
+// ---- Helpers de geometría ----
+
+/** Devuelve coordenadas del mouse relativas al canvas, escaladas */
+function posCanvas(e) {
+  const rect  = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top)  * scaleY
+  };
+}
+
+function detectarCursor(x, y) {
+  for (const p of puntos) {
+    if (Math.hypot(p.x - x, p.y - y) < 12) return 'grab';
+  }
+  if (cercaLinea(puntos[0], puntos[1], x, y)) return 'ns-resize';
+  if (cercaLinea(puntos[2], puntos[3], x, y)) return 'ns-resize';
+  if (cercaLinea(puntos[0], puntos[3], x, y)) return 'ew-resize';
+  if (cercaLinea(puntos[1], puntos[2], x, y)) return 'ew-resize';
+  if (puntoDentroPoligono(x, y, puntos))      return 'move';
+  return 'crosshair';
+}
+
+function cercaLinea(p1, p2, x, y) {
+  return distanciaLinea(x, y, p1, p2) < 12;
+}
+
+function distanciaLinea(px, py, p1, p2) {
+  const A = px - p1.x, B = py - p1.y;
+  const C = p2.x - p1.x, D = p2.y - p1.y;
+  const dot = A * C + B * D;
+  const len = C * C + D * D;
+  const t   = Math.max(0, Math.min(1, dot / len));
+  return Math.hypot(px - (p1.x + t * C), py - (p1.y + t * D));
+}
+
+/**
+ * puntoDentroPoligono()
+ * ---------------------
+ * Ray-casting algorithm para detección punto ↔ polígono.
+ */
+function puntoDentroPoligono(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > py) !== (yj > py)) &&
+      (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+
+// ============================================================
+// 6. ROTACIÓN DE LIENZO
+//    Permite corregir imágenes inclinadas desde el celular.
+// ============================================================
+
+/**
+ * actualizarRotacion(grados)
+ * ---------------------------
+ * Llamada por el slider. Reaplica la rotación a la imagen base.
+ */
+function actualizarRotacion(grados) {
+  anguloLienzo = parseFloat(grados);
+  document.getElementById('valorRotacion').textContent = grados + '°';
+  // Actualizar degradado del slider para feedback visual
+  const pct = ((anguloLienzo + 180) / 360) * 100;
+  const sl  = document.getElementById('sliderRotacion');
+  sl.style.background = `linear-gradient(to right,
+    var(--azul) 0%, var(--azul) ${pct}%,
+    var(--gris-borde) ${pct}%, var(--gris-borde) 100%)`;
+  renderConRotacion();
+}
+
+/**
+ * rotar90(dir)
+ * ------------
+ * dir = -1 → izquierda 90°
+ * dir =  1 → derecha 90°
+ * Acumula en anguloLienzo y sincroniza el slider.
+ */
+function rotar90(dir) {
+  anguloLienzo = ((anguloLienzo + dir * 90) + 360) % 360;
+  if (anguloLienzo > 180) anguloLienzo -= 360;
+  syncSlider();
+  renderConRotacion();
+}
+
+/**
+ * resetRotacion()
+ * ---------------
+ * Devuelve el ángulo a 0.
+ */
+function resetRotacion() {
+  anguloLienzo = 0;
+  syncSlider();
+  renderConRotacion();
+  setStatus('Rotación reiniciada a 0°.');
+}
+
+/** Sincroniza el slider con anguloLienzo actual */
+function syncSlider() {
+  const sl = document.getElementById('sliderRotacion');
+  sl.value = anguloLienzo;
+  document.getElementById('valorRotacion').textContent = anguloLienzo + '°';
+}
+
+
+// ============================================================
+// 7. ENDEREZADO AUTOMÁTICO
+//    Detecta la inclinación de la selección actual y la corrige.
+//    Funcionamiento:
+//      1. Calcula el ángulo del lado superior de la selección.
+//      2. Rota el lienzo ese ángulo para que quede horizontal.
+//      3. Recalcula los puntos de selección post-rotación.
+// ============================================================
+
+function enderezarSeleccion() {
+  if (!imagenBase) return;
+
+  // Lado superior: puntos[0] → puntos[1]
+  const dx    = puntos[1].x - puntos[0].x;
+  const dy    = puntos[1].y - puntos[0].y;
+  const angRad = Math.atan2(dy, dx);
+  const angDeg = angRad * 180 / Math.PI;
+
+  if (Math.abs(angDeg) < 0.1) {
+    setStatus('La selección ya está alineada horizontalmente.');
+    return;
+  }
+
+  // Aplicar corrección inversa
+  anguloLienzo -= angDeg;
+  anguloLienzo  = Math.round(anguloLienzo * 10) / 10; // 1 decimal
+
+  syncSlider();
+  renderConRotacion();
+
+  setStatus(`✨ Inclinación corregida: ${angDeg.toFixed(2)}° — Lienzo rotado ${anguloLienzo}°`);
+}
+
+
+// ============================================================
+// 8. CORRECCIÓN DE PERSPECTIVA
+//    Transforma una selección cuadrilátera irregular (trapecio)
+//    en un rectángulo perfecto usando transformación proyectiva.
+//
+//    Algoritmo: Transformación bilineal homogénea (4 puntos → 4 puntos)
+//    Implementación propia sin dependencias externas.
+//
+//    Pasos:
+//      1. Calcular la homografía H que mapea los 4 puntos seleccionados
+//         a las esquinas de un rectángulo de salida.
+//      2. Aplicar H pixel a pixel (backward mapping para máxima calidad).
+//      3. Reemplazar imagenBase con la imagen corregida.
+//      4. Reinicializar la selección al nuevo canvas.
+// ============================================================
+
+function corregirPerspectiva() {
+  if (!imagenBase) return;
+
+  // Fuente: 4 puntos de la selección
+  const src = puntos.map(p => [p.x, p.y]);
+
+  // Calcular dimensiones del rectángulo de destino
+  const anchTop    = Math.hypot(src[1][0]-src[0][0], src[1][1]-src[0][1]);
+  const anchBottom = Math.hypot(src[2][0]-src[3][0], src[2][1]-src[3][1]);
+  const altLeft    = Math.hypot(src[3][0]-src[0][0], src[3][1]-src[0][1]);
+  const altRight   = Math.hypot(src[2][0]-src[1][0], src[2][1]-src[1][1]);
+  const W = Math.round(Math.max(anchTop, anchBottom));
+  const H = Math.round(Math.max(altLeft, altRight));
+
+  // Destino: rectángulo perfecto
+  const dst = [[0,0],[W,0],[W,H],[0,H]];
+
+  // Calcular homografía H (src → dst)
+  const H_mat = calcularHomografia(src, dst);
+  if (!H_mat) { setStatus('⚠ Error al calcular la homografía.'); return; }
+
+  // Canvas de salida
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width  = W;
+  outCanvas.height = H;
+  const outCtx    = outCanvas.getContext('2d');
+
+  // Obtener imagen fuente rotada
+  const srcImg = window._imagenRotada || imagenBase;
+  const tmpC   = document.createElement('canvas');
+  tmpC.width   = canvas.width;
+  tmpC.height  = canvas.height;
+  tmpC.getContext('2d').drawImage(srcImg, 0, 0);
+  const srcData = tmpC.getContext('2d').getImageData(0, 0, tmpC.width, tmpC.height);
+  const outData = outCtx.createImageData(W, H);
+
+  // Calcular H inversa para backward mapping (mejor calidad)
+  const H_inv = invertir3x3(H_mat);
+  if (!H_inv) { setStatus('⚠ Matriz singular, intenta ajustar la selección.'); return; }
+
+  // Backward mapping: para cada pixel del destino, calculamos
+  // de dónde viene en la fuente aplicando H^-1
+  for (let row = 0; row < H; row++) {
+    for (let col = 0; col < W; col++) {
+      // Aplicar H^-1 al punto destino
+      const [sx, sy] = aplicarHomografia(H_inv, col, row);
+
+      const sxi = Math.round(sx), syi = Math.round(sy);
+      if (sxi < 0 || syi < 0 || sxi >= tmpC.width || syi >= tmpC.height) continue;
+
+      const srcIdx = (syi * tmpC.width + sxi) * 4;
+      const dstIdx = (row  * W         + col) * 4;
+
+      outData.data[dstIdx]     = srcData.data[srcIdx];
+      outData.data[dstIdx + 1] = srcData.data[srcIdx + 1];
+      outData.data[dstIdx + 2] = srcData.data[srcIdx + 2];
+      outData.data[dstIdx + 3] = srcData.data[srcIdx + 3];
+    }
+  }
+
+  outCtx.putImageData(outData, 0, 0);
+
+  // Reemplazar la imagen de trabajo con la corregida
+  const corrImg = new Image();
+  corrImg.src   = outCanvas.toDataURL('image/png');
+  corrImg.onload = () => {
+    imagenBase             = corrImg;
+    anguloLienzo           = 0;
+    window._imagenRotada   = corrImg;
+    syncSlider();
+    canvas.width           = W;
+    canvas.height          = H;
+    ajustarZoomInicial();
+    // *** v3: colocar selección en toda la imagen automáticamente ***
+    puntos = [
+      { x: 0, y: 0 },
+      { x: W, y: 0 },
+      { x: W, y: H },
+      { x: 0, y: H }
+    ];
+    dibujar();
+    setStatus('🔲 Perspectiva corregida. Selección = imagen completa → presiona ✂ Recortar.');
+  };
+}
+
+// ---- Álgebra de homografías ----
+
+/**
+ * calcularHomografia(src, dst)
+ * ----------------------------
+ * Calcula la matriz de homografía 3x3 que mapea 4 puntos src a 4 puntos dst.
+ * Resuelve el sistema Ah = 0 mediante eliminación gaussiana.
+ * @param {Array} src  [[x,y]×4] puntos fuente
+ * @param {Array} dst  [[x,y]×4] puntos destino
+ * @returns {Array}    Matriz 3x3 como array plano [h0..h8] o null si falla
+ */
+function calcularHomografia(src, dst) {
+  // Construir matriz A (8×8) y vector b (8×1)
+  const A = [];
+  const b = [];
+
+  for (let i = 0; i < 4; i++) {
+    const [x, y]   = src[i];
+    const [xp, yp] = dst[i];
+
+    A.push([x, y, 1, 0, 0, 0, -xp*x, -xp*y]);
+    b.push(xp);
+
+    A.push([0, 0, 0, x, y, 1, -yp*x, -yp*y]);
+    b.push(yp);
+  }
+
+  const h = gaussianElimination(A, b);
+  if (!h) return null;
+
+  // h = [h0..h7], h8 = 1 por convención
+  return [
+    [h[0], h[1], h[2]],
+    [h[3], h[4], h[5]],
+    [h[6], h[7], 1]
+  ];
+}
+
+/**
+ * gaussianElimination(A, b)
+ * -------------------------
+ * Resuelve el sistema Ax = b mediante eliminación gaussiana con pivote parcial.
+ * @returns {Array} Vector solución x, o null si singular
+ */
+function gaussianElimination(A, b) {
+  const n = A.length;
+  // Aumentada [A|b]
+  const M = A.map((row, i) => [...row, b[i]]);
+
+  for (let col = 0; col < n; col++) {
+    // Pivote parcial
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    }
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+
+    if (Math.abs(M[col][col]) < 1e-10) return null; // singular
+
+    for (let row = col + 1; row < n; row++) {
+      const factor = M[row][col] / M[col][col];
+      for (let k = col; k <= n; k++) {
+        M[row][k] -= factor * M[col][k];
+      }
+    }
+  }
+
+  // Back-substitution
+  const x = new Array(n).fill(0);
+  for (let row = n - 1; row >= 0; row--) {
+    x[row] = M[row][n];
+    for (let col = row + 1; col < n; col++) {
+      x[row] -= M[row][col] * x[col];
+    }
+    x[row] /= M[row][row];
+  }
+  return x;
+}
+
+/**
+ * aplicarHomografia(H, x, y)
+ * ---------------------------
+ * Aplica la homografía H al punto (x, y) y devuelve (x', y').
+ */
+function aplicarHomografia(H, x, y) {
+  const w  = H[2][0]*x + H[2][1]*y + H[2][2];
+  const xp = (H[0][0]*x + H[0][1]*y + H[0][2]) / w;
+  const yp = (H[1][0]*x + H[1][1]*y + H[1][2]) / w;
+  return [xp, yp];
+}
+
+/**
+ * invertir3x3(M)
+ * ---------------
+ * Calcula la inversa de una matriz 3x3 por la fórmula de adjunta/determinante.
+ * @returns {Array|null} Matriz inversa 3x3 o null si el determinante es ~0
+ */
+function invertir3x3(M) {
+  const [[a,b,c],[d,e,f],[g,h,i]] = M;
+
+  const det = a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
+  if (Math.abs(det) < 1e-10) return null;
+
+  const inv = [
+    [(e*i-f*h)/det, (c*h-b*i)/det, (b*f-c*e)/det],
+    [(f*g-d*i)/det, (a*i-c*g)/det, (c*d-a*f)/det],
+    [(d*h-e*g)/det, (b*g-a*h)/det, (a*e-b*d)/det]
+  ];
+  return inv;
+}
+
+
+// ============================================================
+// 9. EDICIÓN DE IMAGEN
+//    Aplica ajustes no destructivos sobre el canvas visible.
+//    El recorte final captura el canvas con los filtros aplicados.
+//
+//    Estrategia:
+//    - CSS filter  → brillo, contraste, saturación, grises, sepia
+//                    (procesado por GPU, tiempo real sin costo)
+//    - Píxeles CPU → temperatura (canales R y B), nitidez (unsharp mask)
+//                    (solo se activa cuando el valor ≠ 0)
+// ============================================================
+
+/**
+ * aplicarAjuste(tipo, valor)
+ * --------------------------
+ * Actualiza el estado de ajustes y redibuja el canvas.
+ * Llamada por todos los sliders del panel.
+ */
+function aplicarAjuste(tipo, valor) {
+  ajustesImagen[tipo] = parseFloat(valor);
+
+  // Actualizar etiqueta numérica
+  const labelMap = {
+    brillo: 'vBrillo', contraste: 'vContraste',
+    saturacion: 'vSaturacion', temperatura: 'vTemp', nitidez: 'vNitidez'
+  };
+  const labelId = labelMap[tipo];
+  if (labelId) document.getElementById(labelId).textContent = Math.round(valor);
+
+  dibujar();
+}
+
+/**
+ * toggleGris()
+ * ------------
+ * Activa/desactiva el modo escala de grises.
+ * Si sepia está activo, lo desactiva primero.
+ */
+function toggleGris() {
+  ajustesImagen.grises = !ajustesImagen.grises;
+  if (ajustesImagen.grises) ajustesImagen.sepia = false;
+  document.getElementById('btnGris').classList.toggle('activo', ajustesImagen.grises);
+  document.getElementById('btnSepia').classList.remove('activo');
+  dibujar();
+}
+
+/**
+ * toggleSepia()
+ * -------------
+ * Activa/desactiva el efecto sepia (aspecto documento antiguo).
+ */
+function toggleSepia() {
+  ajustesImagen.sepia = !ajustesImagen.sepia;
+  if (ajustesImagen.sepia) ajustesImagen.grises = false;
+  document.getElementById('btnSepia').classList.toggle('activo', ajustesImagen.sepia);
+  document.getElementById('btnGris').classList.remove('activo');
+  dibujar();
+}
+
+/**
+ * presetDocumento()
+ * -----------------
+ * Preset optimizado para documentos oficiales:
+ * - Contraste alto para texto legible
+ * - Nitidez máxima para bordes nítidos
+ * - Saturación baja para look profesional
+ * - Sin sepia/grises para conservar color original
+ */
+function presetDocumento() {
+  ajustesImagen = {
+    brillo: 10, contraste: 35, saturacion: -20,
+    temperatura: 0, nitidez: 6,
+    grises: false, sepia: false
+  };
+  sincronizarSlidersUI();
+  dibujar();
+  setStatus('📄 Preset Documento aplicado: contraste alto + nitidez máxima.');
+}
+
+/**
+ * resetAjustes()
+ * --------------
+ * Devuelve todos los ajustes a sus valores neutros.
+ */
+function resetAjustes() {
+  ajustesImagen = {
+    brillo: 0, contraste: 0, saturacion: 0,
+    temperatura: 0, nitidez: 0,
+    grises: false, sepia: false
+  };
+  sincronizarSlidersUI();
+  dibujar();
+  setStatus('⟳ Ajustes de imagen reiniciados.');
+}
+
+/**
+ * sincronizarSlidersUI()
+ * ----------------------
+ * Actualiza todos los sliders y etiquetas según el estado de ajustesImagen.
+ */
+function sincronizarSlidersUI() {
+  const mapa = {
+    brillo: 'slBrillo', contraste: 'slContraste',
+    saturacion: 'slSaturacion', temperatura: 'slTemp', nitidez: 'slNitidez'
+  };
+  const labelMap = {
+    brillo: 'vBrillo', contraste: 'vContraste',
+    saturacion: 'vSaturacion', temperatura: 'vTemp', nitidez: 'vNitidez'
+  };
+  for (const [key, slId] of Object.entries(mapa)) {
+    const el = document.getElementById(slId);
+    if (el) el.value = ajustesImagen[key];
+  }
+  for (const [key, lbId] of Object.entries(labelMap)) {
+    const el = document.getElementById(lbId);
+    if (el) el.textContent = Math.round(ajustesImagen[key]);
+  }
+  document.getElementById('btnGris').classList.toggle('activo', ajustesImagen.grises);
+  document.getElementById('btnSepia').classList.toggle('activo', ajustesImagen.sepia);
+}
+
+/**
+ * aplicarFiltrosPixel()
+ * ----------------------
+ * Aplica temperatura y nitidez directamente sobre los píxeles del canvas.
+ * Se llama desde dibujar() DESPUÉS de que CSS filter ya procesó la imagen.
+ *
+ * TEMPERATURA: desplaza canal R (calidez) y B (frialdad).
+ *   valor > 0 → más cálido (más rojo, menos azul)
+ *   valor < 0 → más frío  (más azul, menos rojo)
+ *
+ * NITIDEZ (Unsharp Mask):
+ *   Convierte la imagen con kernel de enfoque 3x3.
+ *   Kernel usado: [[ 0,-1, 0],[-1, 5,-1],[ 0,-1, 0]] × intensidad
+ *   Solo procesa una vez con el valor de nitidez actual.
+ */
+function aplicarFiltrosPixel() {
+  const W   = canvas.width;
+  const H   = canvas.height;
+  const img = ctx.getImageData(0, 0, W, H);
+  const d   = img.data;
+  const aj  = ajustesImagen;
+
+  // — TEMPERATURA —
+  if (aj.temperatura !== 0) {
+    const t = aj.temperatura;
+    for (let i = 0; i < d.length; i += 4) {
+      d[i]     = Math.min(255, Math.max(0, d[i]     + t * 2));   // R
+      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] - t * 2));   // B
+    }
+  }
+
+  // — NITIDEZ (Unsharp Mask 3×3) —
+  if (aj.nitidez > 0) {
+    const nivel = aj.nitidez / 10; // 0..1
+    // Kernel de convolución: bordes nítidos
+    const kernel = [
+       0,       -nivel,   0,
+      -nivel,  1 + 4*nivel, -nivel,
+       0,       -nivel,   0
+    ];
+    const src2 = new Uint8ClampedArray(d); // copia para backward sampling
+
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) {
+        const idx = (y * W + x) * 4;
+        for (let c = 0; c < 3; c++) { // solo R, G, B (no alpha)
+          let sum = 0;
+          let ki  = 0;
+          for (let ky = -1; ky <= 1; ky++) {
+            for (let kx = -1; kx <= 1; kx++) {
+              const ni = ((y + ky) * W + (x + kx)) * 4 + c;
+              sum += src2[ni] * kernel[ki++];
+            }
+          }
+          d[idx + c] = Math.min(255, Math.max(0, sum));
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+}
+
+
+// ============================================================
+// 10. SELECCIONAR TODO
+//     Después de corregir perspectiva, la imagen resultante
+//     ocupa exactamente el canvas. Esta función coloca los
+//     4 puntos de selección en las esquinas del canvas con
+//     margen mínimo, lista para recortar.
+//     También útil en cualquier momento para "resetear" la
+//     selección al tamaño completo visible.
+// ============================================================
+
+/**
+ * seleccionarTodo()
+ * -----------------
+ * Coloca la selección en las 4 esquinas exactas del canvas (sin margen).
+ * Ideal para usar justo después de "Corregir perspectiva".
+ */
+function seleccionarTodo() {
+  if (!imagenBase) { setStatus('⚠ Carga una imagen primero.'); return; }
+  puntos = [
+    { x: 0,            y: 0 },
+    { x: canvas.width, y: 0 },
+    { x: canvas.width, y: canvas.height },
+    { x: 0,            y: canvas.height }
+  ];
+  dibujar();
+  setStatus('⬜ Selección = imagen completa. Listo para recortar.');
+}
+
+
+// ============================================================
+// 11. RECORTE
+//     Genera un canvas con el área seleccionada.
+//     IMPORTANTE: captura el canvas tal como está visible,
+//     incluyendo todos los ajustes de imagen aplicados.
+// ============================================================
+
+function recortar() {
+  if (!imagenBase) { setStatus('⚠ Carga una imagen primero.'); return; }
+
+  const escala = parseFloat(document.getElementById('selectDPI').value);
+
+  // Dimensiones de salida según el estándar original
+  const borde   = 5;
+  const targetW = Math.round(850 * escala);
+  const targetH = Math.round(550 * escala);
+
+  // *** Solo CI lleva bordes redondeados ***
+  const esCI  = tipoRecorteActual === 'CI';
+  const radio = esCI ? Math.round(20 * escala) : 0;
+
+  // *** v3: capturar con todos los filtros de edición aplicados ***
+  const src = window._imagenRotada || imagenBase;
+  const aj  = ajustesImagen;
+  const bri = 1 + aj.brillo    / 100;
+  const con = 1 + aj.contraste / 100;
+  const sat = aj.grises ? 0 : Math.max(0, 1 + aj.saturacion / 100);
+  const sep = aj.sepia ? 0.8 : 0;
+
+  const tmpC   = document.createElement('canvas');
+  tmpC.width   = canvas.width;
+  tmpC.height  = canvas.height;
+  const tmpCtx = tmpC.getContext('2d');
+  tmpCtx.imageSmoothingEnabled = true;
+  tmpCtx.imageSmoothingQuality = 'high';
+  tmpCtx.filter = `brightness(${bri.toFixed(3)}) contrast(${con.toFixed(3)}) saturate(${sat.toFixed(3)}) sepia(${sep})`;
+  tmpCtx.drawImage(src, 0, 0);
+  tmpCtx.filter = 'none';
+
+  // Temperatura y nitidez
+  if (aj.temperatura !== 0 || aj.nitidez > 0) {
+    const W2 = tmpC.width, H2 = tmpC.height;
+    const img2 = tmpCtx.getImageData(0, 0, W2, H2);
+    const d2   = img2.data;
+    if (aj.temperatura !== 0) {
+      const t = aj.temperatura;
+      for (let i = 0; i < d2.length; i += 4) {
+        d2[i]     = Math.min(255, Math.max(0, d2[i]     + t * 2));
+        d2[i + 2] = Math.min(255, Math.max(0, d2[i + 2] - t * 2));
+      }
+    }
+    if (aj.nitidez > 0) {
+      const niv = aj.nitidez / 10;
+      const ker = [0,-niv,0,-niv,1+4*niv,-niv,0,-niv,0];
+      const cp  = new Uint8ClampedArray(d2);
+      for (let y = 1; y < H2-1; y++) {
+        for (let x = 1; x < W2-1; x++) {
+          const idx = (y*W2+x)*4;
+          for (let c = 0; c < 3; c++) {
+            let s = 0, ki = 0;
+            for (let ky=-1;ky<=1;ky++) for (let kx=-1;kx<=1;kx++)
+              s += cp[((y+ky)*W2+(x+kx))*4+c] * ker[ki++];
+            d2[idx+c] = Math.min(255, Math.max(0, s));
+          }
+        }
+      }
+    }
+    tmpCtx.putImageData(img2, 0, 0);
+  }
+
+  // Bounding box de la selección
+  const minX = Math.min(...puntos.map(p => p.x));
+  const minY = Math.min(...puntos.map(p => p.y));
+  const maxX = Math.max(...puntos.map(p => p.x));
+  const maxY = Math.max(...puntos.map(p => p.y));
+  const srcW = maxX - minX;
+  const srcH = maxY - minY;
+
+  if (srcW < 5 || srcH < 5) {
+    setStatus('⚠ La selección es demasiado pequeña.');
+    return;
+  }
+
+  // — Canvas de salida final —
+  const final = document.createElement('canvas');
+  final.width  = targetW + borde * 2;
+  final.height = targetH + borde * 2;
+  const fctx  = final.getContext('2d');
+  fctx.imageSmoothingEnabled = true;
+  fctx.imageSmoothingQuality = 'high';
+
+  // Fondo gris: redondeado solo para CI
+  fctx.fillStyle = 'rgb(235,235,235)';
+  if (radio > 0) {
+    rectRedondeado(fctx, 0, 0, final.width, final.height, radio);
+    fctx.fill();
+  } else {
+    fctx.fillRect(0, 0, final.width, final.height);
+  }
+
+  fctx.save();
+  if (radio > 0) {
+    rectRedondeado(fctx, borde, borde, targetW, targetH, radio);
+    fctx.clip();
+  }
+  fctx.drawImage(tmpC, minX, minY, srcW, srcH, borde, borde, targetW, targetH);
+  fctx.restore();
+
+  recortes.push(final);
+  agregarRecorteUI(final);
+  setStatus(`✂ Recorte ${recortes.length} generado — tipo: ${tipoRecorteActual}${radio > 0 ? ' (bordes redondeados)' : ' (bordes rectos)'}.`);
+}
+
+/** Dibuja un rectángulo redondeado en el contexto dado */
+function rectRedondeado(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+
+// ============================================================
+// 12. EXPORTACIÓN A PDF
+//     Se mantienen los formatos y dimensiones originales.
+// ============================================================
+
+function crearPDF() {
+  const { jsPDF } = window.jspdf;
+  return new jsPDF({ unit: 'cm', format: [21.6, 33] });
+}
+
+function exportarCI() {
+  if (recortes.length < 2) { alert('Necesitas 2 recortes para exportar CI.'); return; }
+  const pdf = crearPDF();
+  const x   = (21.6 - 8.5) / 2;
+  const y   = (33 - (5.5 * 2 + 1)) / 2 - 8;
+  pdf.addImage(recortes[0].toDataURL('image/png', 1.0), 'PNG', x, y,       8.5, 5.5);
+  pdf.addImage(recortes[1].toDataURL('image/png', 1.0), 'PNG', x, y + 8.5, 8.5, 5.5);
+  pdf.save('CI.pdf');
+  setStatus('📄 CI.pdf generado.');
+}
+
+function exportarCN() {
+  if (!recortes.length) { alert('Necesitas al menos 1 recorte.'); return; }
+  const pdf = crearPDF();
+  const w   = 15, h = 20.5;
+  const x   = (21.6 - w) / 2;
+  pdf.addImage(recortes[0].toDataURL('image/png', 1.0), 'PNG', x, 2, w, h);
+  pdf.save('CN.pdf');
+  setStatus('📄 CN.pdf generado.');
+}
+
+function exportarTP() {
+  if (!recortes.length) { alert('Necesitas al menos 1 recorte.'); return; }
+  const pdf = crearPDF();
+  pdf.addImage(recortes[0].toDataURL('image/png', 1.0), 'PNG', 0, 0, 21.6, 33);
+  pdf.save('TP.pdf');
+  setStatus('📄 TP.pdf generado.');
+}
+
+/**
+ * exportarTPCarta()
+ * -----------------
+ * Exporta el primer recorte en tamaño carta estándar (21.59 × 27.94 cm).
+ * Sin bordes redondeados. Ideal para testimonios y documentos A4/Carta.
+ */
+function exportarTPCarta() {
+  if (!recortes.length) { alert('Necesitas al menos 1 recorte.'); return; }
+  const { jsPDF } = window.jspdf;
+  // Carta: 215.9 × 279.4 mm = 21.59 × 27.94 cm
+  const pdf = new jsPDF({ unit: 'cm', format: 'letter', orientation: 'portrait' });
+  pdf.addImage(recortes[0].toDataURL('image/png', 1.0), 'PNG', 0, 0, 21.59, 27.94);
+  pdf.save('TP_Carta.pdf');
+  setStatus('📄 TP_Carta.pdf generado (tamaño carta).');
+}
+
+
+// ============================================================
+// 11. UI HELPERS
+// ============================================================
+
+/** Agrega un recorte al contenedor con botones de reorden y eliminar */
+function agregarRecorteUI(canvasRecorte) {
+  const contenedor = document.getElementById('contenedorRecortes');
+  const box        = document.createElement('div');
+  box.className    = 'boxRecorte';
+
+  // Preview del recorte (reducido)
+  const preview       = document.createElement('canvas');
+  const maxPrev       = 280;
+  const scale         = Math.min(maxPrev / canvasRecorte.width, maxPrev / canvasRecorte.height);
+  preview.width       = Math.round(canvasRecorte.width  * scale);
+  preview.height      = Math.round(canvasRecorte.height * scale);
+  const pctx          = preview.getContext('2d');
+  pctx.imageSmoothingEnabled = true;
+  pctx.imageSmoothingQuality = 'high';
+  pctx.drawImage(canvasRecorte, 0, 0, preview.width, preview.height);
+
+  // Etiqueta de número
+  const etiqueta = document.createElement('div');
+  etiqueta.style.cssText = 'font-size:0.78rem;font-weight:700;color:#555;';
+  etiqueta.textContent   = `Recorte ${recortes.length}`;
+
+  // Botones
+  const fila     = document.createElement('div');
+  fila.className = 'btnsFila';
+
+  const btnIzq = crearBtn('⬅', 'mini', () => {
+    const idx = Array.from(contenedor.children).indexOf(box);
+    if (idx > 0) {
+      [recortes[idx], recortes[idx-1]] = [recortes[idx-1], recortes[idx]];
+      contenedor.insertBefore(box, contenedor.children[idx-1]);
+    }
+  });
+  const btnDer = crearBtn('➡', 'mini', () => {
+    const idx = Array.from(contenedor.children).indexOf(box);
+    if (idx < recortes.length - 1) {
+      [recortes[idx], recortes[idx+1]] = [recortes[idx+1], recortes[idx]];
+      contenedor.insertBefore(contenedor.children[idx+1], box);
+    }
+  });
+  const btnDel = crearBtn('❌ Eliminar', 'mini rojo', () => {
+    const idx = Array.from(contenedor.children).indexOf(box);
+    recortes.splice(idx, 1);
+    box.remove();
+    setStatus('Recorte eliminado.');
+  });
+
+  fila.append(btnIzq, btnDer, btnDel);
+  box.append(etiqueta, preview, fila);
+  contenedor.appendChild(box);
+}
+
+function crearBtn(texto, clases, fn) {
+  const b = document.createElement('button');
+  b.textContent = texto;
+  b.className   = clases;
+  b.onclick     = fn;
+  return b;
+}
+
+function togglePanel(toggle) {
+  const contenido = document.getElementById('panelContenido');
+  toggle.classList.toggle('abierto');
+  contenido.classList.toggle('visible');
+}
+
+function setStatus(msg) {
+  document.getElementById('statusBar').innerHTML = msg;
+}
+
+function actualizarInfoPagina(num) {
+  const el = document.getElementById('infoPagina');
+  if (el) el.textContent = `Página ${num} de ${totalPaginas}`;
+  document.getElementById('btnAnterior').disabled = num <= 1;
+  document.getElementById('btnSiguiente').disabled = num >= totalPaginas;
+}
+
+function habilitarNavPDF() {
+  if (pdfDoc) {
+    document.getElementById('btnAnterior').disabled = paginaActual <= 1;
+    document.getElementById('btnSiguiente').disabled = paginaActual >= totalPaginas;
+  }
+}
+
+</script>
+</body>
+</html>

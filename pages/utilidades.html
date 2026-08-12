@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: #d3ddc2;
+      color: #fff;
+    }
+
+        .navbar {
+      background-color: #155724 !important;
+    }
+
+    .navbar-brand {
+      color: #d4edda !important;
+      font-weight: bold;
+    }
+
+    /* HEADER */
+    .header {
+      background: #75d43e98;
+      padding: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    /* CONTENEDOR */
+    .container {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    /* TARJETAS */
+    .card {
+      background: #11501a;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #ffffff;
+    }
+
+    /* BOTONES */
+    .btn {
+      display: block;
+      margin-top: 10px;
+      padding: 10px;
+      background: linear-gradient(135deg, #709651, #73a571);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      transition: 0.3s;
+    }
+
+    .btn:hover {
+      opacity: 0.85;
+    }
+
+    /* ICONOS (emoji simple pero elegante) */
+    .icon {
+      font-size: 20px;
+      margin-right: 5px;
+    }
+
+  </style>
+</head>
+
+<body>
+<div id="navbar"></div>
+  <div class="header">
+    🚀 PANEL DE UTILIDADES
+  </div>
+
+  <div class="container">
+
+    <!-- WORD -->
+    <div class="card">
+      <h3>📄 Armado de Carpetas</h3>
+
+      <a class="btn" href="programUtilities/ESTANDARIZACION DE DOCUMENTOS/Estandarizacion.html" target="_blank">
+        ⬇ Estandarización de Documentos
+      </a>
+
+      <a class="btn" href="programUtilities/DIVISION DE PDF/ocrPDF.html" target="_blank">
+        ⬇ Division de documentos PDF
+      </a>
+
+      <a class="btn" href="https://drive.google.com/file/d/19dttBHVnHI9MXVu9Vb0IRqC4tlthr3co/view?usp=drive_link" target="_blank">
+        ⬇ Realizar Pestañas
+      </a>
+
+      <a class="btn" href="programUtilities/SOBRES PARA FOTOS/APRETAME.html" target="_blank">
+        ⬇ Realizar Sobres
+      </a>
+
+      <a class="btn" target="_blank" href="https://docs.google.com/document/d/1f6Y6197BVKe4RylvEm6G6P75VRfiyjw3/edit?usp=sharing&ouid=109930463244717802523&rtpof=true&sd=true" target="_blank">
+        ⬇ Caratulas - Hojas verdes
+      </a>
+
+      <a class="btn" target="_blank" href="https://drive.google.com/file/d/1CQFlcgoNnDAzARkwVtpfzV1S4f4TKemN/view?usp=sharing">
+        ⬇ Membrete Final 
+      </a>
+
+      <a class="btn" download="INFORME FINAL ACADÉMICO" href="office/MODELO INFORME ACADÉMICO.docx">
+        ⬇ Informe Final Académico
+      </a>
+
+      
+      <a class="btn" href="programUtilities/GENERADOR DE AVISOS/generadorAvisos.html" target="_blank">
+        ⬇ Generador de avisos
+      </a>
+    </div>
+
+
+
+  </div>
+
+
+<script src="../accesorios/navbar.js"> </script>
+<script>loadNavbar();</script>
+
+</body>
+</html>

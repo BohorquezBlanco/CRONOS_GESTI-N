@@ -1,0 +1,2626 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Generador de Avisos de Defensas - USIP</title>
+
+  <style>
+
+    /* =========================================================
+       VARIABLES
+       ========================================================= */
+
+    :root {
+      --green: #2f5b2a;
+      --green-dark: #234620;
+      --gold: #b88616;
+
+      --blue: #2563eb;
+      --red: #dc2626;
+
+      --ink: #1a1d29;
+      --muted: #5b6170;
+
+      --bg: #f3f5f9;
+      --card: #ffffff;
+      --line: #e2e6ef;
+
+      --shadow: 0 8px 25px rgba(0, 0, 0, .07);
+    }
+
+
+    /* =========================================================
+       GENERAL
+       ========================================================= */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
+    }
+
+
+    /* =========================================================
+       CONTENEDOR
+       ========================================================= */
+
+    .container {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+
+    /* =========================================================
+       ENCABEZADO
+       ========================================================= */
+
+    .topbar {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 22px;
+      margin-bottom: 20px;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo {
+      font-family: "Times New Roman", serif;
+      font-size: 40px;
+      font-weight: bold;
+      letter-spacing: 4px;
+    }
+
+    .logo .u,
+    .logo .i {
+      color: var(--gold);
+    }
+
+    .logo .s,
+    .logo .p {
+      color: var(--green);
+    }
+
+    .brand-info h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .brand-info p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+
+    /* =========================================================
+       BOTONES
+       ========================================================= */
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 9px 14px;
+
+      font-size: 13px;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      transition: .15s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(.97);
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: white;
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: white;
+    }
+
+    .btn-blue {
+      background: var(--blue);
+      color: white;
+    }
+
+    .btn-red {
+      background: var(--red);
+      color: white;
+    }
+
+    .btn-gray {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn-light {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+
+    /* =========================================================
+       TARJETAS
+       ========================================================= */
+
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fafbfc;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .card-header small {
+      color: var(--muted);
+    }
+
+    .card-body {
+      padding: 18px;
+    }
+
+
+    /* =========================================================
+       CONFIGURACIÓN
+       ========================================================= */
+
+    .settings {
+      display: grid;
+      grid-template-columns:
+        repeat(4, minmax(160px, 1fr));
+      gap: 15px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+
+      border: 1px solid #d6dae3;
+      border-radius: 8px;
+
+      padding: 9px 10px;
+
+      background: white;
+      color: var(--ink);
+
+      font: inherit;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: 2px solid rgba(47, 91, 42, .15);
+      border-color: var(--green);
+    }
+
+
+    /* =========================================================
+       TABLA EDITABLE
+       ========================================================= */
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1300px;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: #f8fafc;
+      color: var(--muted);
+
+      font-size: 12px;
+      text-align: left;
+
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    td input,
+    td select {
+      min-width: 100px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .actions button {
+      padding: 7px 9px;
+    }
+
+
+    /* =========================================================
+       BARRA DE ACCIONES
+       ========================================================= */
+
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .counter {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+
+    /* =========================================================
+       PREVIEW
+       ========================================================= */
+
+    .preview-container {
+      background: #e9edf3;
+      padding: 25px;
+
+      display: flex;
+      justify-content: center;
+    }
+
+    .preview {
+      width: 100%;
+      max-width: 650px;
+      background: white;
+
+      border-radius: 18px;
+
+      box-shadow: 0 15px 45px rgba(0, 0, 0, .12);
+
+      overflow: hidden;
+    }
+
+    .preview-header {
+      padding: 25px;
+      text-align: center;
+
+      background:
+        linear-gradient(
+          135deg,
+          #f9fafb,
+          #ffffff
+        );
+
+      border-bottom: 4px solid var(--gold);
+    }
+
+    .preview-logo {
+      font-family: "Times New Roman", serif;
+      font-size: 42px;
+      font-weight: bold;
+      letter-spacing: 5px;
+    }
+
+    .preview-logo .u,
+    .preview-logo .i {
+      color: var(--gold);
+    }
+
+    .preview-logo .s,
+    .preview-logo .p {
+      color: var(--green);
+    }
+
+    .preview-university {
+      color: var(--green);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-top: 4px;
+    }
+
+    .preview-title {
+      margin-top: 25px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .preview-student {
+      font-size: 27px;
+      font-weight: 800;
+      color: var(--green);
+      margin-top: 8px;
+    }
+
+    .preview-content {
+      padding: 22px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .info-box {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 13px;
+    }
+
+    .info-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .info-value {
+      margin-top: 3px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .section-title {
+      margin: 25px 0 10px;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--green);
+      border-bottom: 2px solid var(--gold);
+      padding-bottom: 5px;
+    }
+
+    .jury-item {
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .jury-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .jury-name {
+      font-weight: 700;
+    }
+
+    .recommendations {
+      margin: 0;
+      padding-left: 20px;
+      color: #374151;
+    }
+
+    .recommendations li {
+      margin-bottom: 7px;
+      font-size: 13px;
+    }
+
+    .preview-footer {
+      padding: 15px;
+      background: #f8fafc;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+
+    /* =========================================================
+       MODAL
+       ========================================================= */
+
+    .modal {
+      position: fixed;
+      inset: 0;
+
+      background: rgba(15, 23, 42, .6);
+
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+
+      border-radius: 18px;
+
+      overflow: auto;
+
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+    }
+
+    .modal-header {
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
+    @media (max-width: 800px) {
+
+      .container {
+        padding: 10px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .brand {
+        width: 100%;
+      }
+
+      .settings {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .counter {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .preview-container {
+        padding: 8px;
+      }
+
+      .preview-student {
+        font-size: 22px;
+      }
+
+    }
+
+
+    @media (max-width: 520px) {
+
+      .settings {
+        grid-template-columns: 1fr;
+      }
+
+      .logo {
+        font-size: 30px;
+      }
+
+      .brand-info h1 {
+        font-size: 19px;
+      }
+
+      .card-body {
+        padding: 12px;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .action-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .action-bar button {
+        width: 100%;
+      }
+
+    }
+
+
+    /* =========================================================
+       IMPRESIÓN
+       ========================================================= */
+
+    @media print {
+
+      body {
+        background: white;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .preview-container {
+        background: white;
+        padding: 0;
+      }
+
+      .preview {
+        box-shadow: none;
+        max-width: 100%;
+        border-radius: 0;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <!-- =======================================================
+       APLICACIÓN
+       ======================================================= -->
+
+  <div class="container">
+
+
+    <!-- =====================================================
+         ENCABEZADO
+         ===================================================== -->
+
+    <header class="topbar no-print">
+
+      <div class="brand">
+
+        <div class="logo">
+          <span class="u">U</span><span class="s">S</span><span class="i">I</span><span class="p">P</span>
+        </div>
+
+        <div class="brand-info">
+
+          <h1>
+            Generador de Avisos de Defensas
+          </h1>
+
+          <p>
+            Universidad Simón I. Patiño · Área de Titulación
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="action-bar">
+
+        <button
+          class="btn-gray"
+          onclick="guardarDatos()">
+          💾 Guardar
+        </button>
+
+        <button
+          class="btn-light"
+          onclick="cargarDatos()">
+          ↻ Recuperar
+        </button>
+
+        <button
+          class="btn-red"
+          onclick="borrarTodo()">
+          🗑 Borrar todo
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         CONFIGURACIÓN
+         ===================================================== -->
+
+    <section class="card no-print">
+
+      <div class="card-header">
+
+        <div>
+
+          <h2>
+            ⚙️ Información general
+          </h2>
+
+          <small>
+            Estos datos aparecerán en los avisos generados.
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="card-body">
+
+        <div class="settings">
+
+
+          <div class="field">
+
+            <label>
+              Universidad
+            </label>
+
+            <input
+              id="universidad"
+              value="Universidad Simón I. Patiño">
+
+          </div>
+
+
+          <div class="field">
+
+            <label>
+              Área responsable
+            </label>
+
+            <input
+              id="area"
+              value="Área de Titulación · Dirección Académica">
+
+          </div>
+
+
+          <div class="field">
+
+            <label>
+              Lugar general
+            </label>
+
+            <input
+              id="lugar"
+              value="AUDITORIO D-6">
+
+          </div>
+
+
+          <div class="field">
+
+            <label>
+              Periodo
+            </label>
+
+            <input
+              id="periodo"
+              value="Julio – Agosto 2026">
+
+          </div>
+
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         TABLA
+         ===================================================== -->
+
+    <section class="card no-print">
+
+      <div class="card-header">
+
+        <div>
+
+          <h2>
+            📋 Defensas programadas
+          </h2>
+
+          <small>
+            Puedes modificar directamente cualquier dato.
+          </small>
+
+        </div>
+
+
+        <div class="action-bar">
+
+          <button
+            class="btn-primary"
+            onclick="agregarDefensa()">
+            + Agregar defensa
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Estudiante</th>
+              <th>Carrera</th>
+              <th>Presidente</th>
+              <th>Exam. I</th>
+              <th>Exam. II</th>
+              <th>Tutor</th>
+              <th>Modalidad</th>
+              <th>Aula</th>
+              <th>Acciones</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody id="tablaDefensas">
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      <div class="card-body">
+
+        <div class="action-bar">
+
+          <button
+            class="btn-gold"
+            onclick="actualizarPreview()">
+            👁️ Vista previa
+          </button>
+
+          <button
+            class="btn-blue"
+            onclick="generarHTMLSeleccionado()">
+            📄 Generar HTML
+          </button>
+
+          <button
+            class="btn-primary"
+            onclick="window.print()">
+            🖨️ Imprimir / PDF
+          </button>
+
+          <span
+            class="counter"
+            id="contador">
+            0 defensas
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         VISTA PREVIA
+         ===================================================== -->
+
+    <section class="card">
+
+      <div class="card-header no-print">
+
+        <div>
+
+          <h2>
+            👁️ Vista previa
+          </h2>
+
+          <small>
+            Así verá el estudiante su aviso.
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="preview-container">
+
+
+        <div
+          class="preview"
+          id="preview">
+
+
+          <!-- LOGO -->
+
+          <div class="preview-header">
+
+            <div class="preview-logo">
+
+              <span class="u">U</span><span class="s">S</span><span class="i">I</span><span class="p">P</span>
+
+            </div>
+
+
+            <div class="preview-university">
+              Universidad Simón I. Patiño
+            </div>
+
+
+            <div class="preview-title">
+              DEFENSA PÚBLICA
+            </div>
+
+
+            <div
+              class="preview-student"
+              id="previewStudent">
+              Seleccione un estudiante
+            </div>
+
+          </div>
+
+
+          <!-- INFORMACIÓN -->
+
+          <div class="preview-content">
+
+
+            <div class="info-grid">
+
+
+              <div class="info-box">
+
+                <div class="info-label">
+                  Fecha
+                </div>
+
+                <div
+                  class="info-value"
+                  id="previewFecha">
+                  —
+                </div>
+
+              </div>
+
+
+              <div class="info-box">
+
+                <div class="info-label">
+                  Hora
+                </div>
+
+                <div
+                  class="info-value"
+                  id="previewHora">
+                  —
+                </div>
+
+              </div>
+
+
+              <div class="info-box">
+
+                <div class="info-label">
+                  Carrera
+                </div>
+
+                <div
+                  class="info-value"
+                  id="previewCarrera">
+                  —
+                </div>
+
+              </div>
+
+
+              <div class="info-box">
+
+                <div class="info-label">
+                  Modalidad
+                </div>
+
+                <div
+                  class="info-value"
+                  id="previewModalidad">
+                  —
+                </div>
+
+              </div>
+
+
+              <div class="info-box"
+                   style="grid-column:1/-1">
+
+                <div class="info-label">
+                  Lugar
+                </div>
+
+                <div
+                  class="info-value"
+                  id="previewAula">
+                  —
+                </div>
+
+              </div>
+
+
+            </div>
+
+
+            <!-- TRIBUNAL -->
+
+            <div class="section-title">
+              TRIBUNAL EVALUADOR
+            </div>
+
+
+            <div class="jury-item">
+
+              <div class="jury-label">
+                PRESIDENTE
+              </div>
+
+              <div
+                class="jury-name"
+                id="previewPresidente">
+                —
+              </div>
+
+            </div>
+
+
+            <div class="jury-item">
+
+              <div class="jury-label">
+                EXAMINADOR I
+              </div>
+
+              <div
+                class="jury-name"
+                id="previewExam1">
+                —
+              </div>
+
+            </div>
+
+
+            <div class="jury-item">
+
+              <div class="jury-label">
+                EXAMINADOR II
+              </div>
+
+              <div
+                class="jury-name"
+                id="previewExam2">
+                —
+              </div>
+
+            </div>
+
+
+            <div class="jury-item">
+
+              <div class="jury-label">
+                TUTOR
+              </div>
+
+              <div
+                class="jury-name"
+                id="previewTutor">
+                —
+              </div>
+
+            </div>
+
+
+            <!-- RECOMENDACIONES -->
+
+            <div class="section-title">
+              RECOMENDACIONES PARA LA DEFENSA
+            </div>
+
+
+            <ol class="recommendations">
+
+              <li>
+                Llegar 30 minutos antes de la hora asignada.
+              </li>
+
+              <li>
+                Llevar una copia de respaldo de la presentación.
+              </li>
+
+              <li>
+                Guardar las diapositivas en una memoria USB o en la nube.
+              </li>
+
+              <li>
+                Verificar con anticipación los elementos técnicos necesarios.
+              </li>
+
+              <li>
+                Utilizar vestimenta formal o semiformal.
+              </li>
+
+              <li>
+                Realizar una exposición clara y estructurada.
+              </li>
+
+              <li>
+                Escuchar con atención las preguntas del tribunal.
+              </li>
+
+              <li>
+                Prever un puntero para el cambio de diapositivas.
+              </li>
+
+              <li>
+                El refrigerio para el tribunal es opcional.
+              </li>
+
+              <li>
+                Agradecer al tribunal al finalizar la defensa.
+              </li>
+
+            </ol>
+
+
+          </div>
+
+
+          <div class="preview-footer">
+
+            Área de Titulación · Dirección Académica
+
+          </div>
+
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+  </div>
+
+
+  <!-- =======================================================
+       JAVASCRIPT
+       ======================================================= -->
+
+  <script>
+
+
+    /* =======================================================
+       DATOS INICIALES
+       ======================================================= */
+
+    let defensas = [
+
+      {
+        fecha: "2026-07-29",
+        hora: "09:00",
+        estudiante: "Lucas Vargas Torrez",
+        carrera: "Ing. Financiera",
+        presidente: "Lic. Jorge Durán",
+        exam1: "Lic. Heidy Alejandra Pacheco Villazón",
+        exam2: "Lic. Vismar Alex Saavedra Pablo",
+        tutor: "Mary Isabel Chambi Torres",
+        modalidad: "Examen de Grado",
+        aula: "AUDITORIO D-6"
+      },
+
+      {
+        fecha: "2026-07-29",
+        hora: "10:30",
+        estudiante: "Neil Alcides García Pérez",
+        carrera: "Ing. Comercial",
+        presidente: "Lic. Jorge Durán",
+        exam1: "Lic. Gabriela Antonieta Romero",
+        exam2: "Lic. Lenny Elizabeth Dmare Alquizalet",
+        tutor: "Sergio Balderrama Guzmán",
+        modalidad: "Proyecto de Grado",
+        aula: "AUDITORIO D-6"
+      },
+
+      {
+        fecha: "2026-07-30",
+        hora: "09:00",
+        estudiante: "Edwin Gonzales Alcon",
+        carrera: "Ing. Telecomunicaciones",
+        presidente: "Ing. Álvaro Ortuño",
+        exam1: "Ing. Elsie Concepción Castellón Ascuy",
+        exam2: "Ing. Marlene Aiza Choque",
+        tutor: "Abraham Mamani Veliz",
+        modalidad: "Proyecto de Grado",
+        aula: "AUDITORIO D-6"
+      },
+
+      {
+        fecha: "2026-07-30",
+        hora: "11:00",
+        estudiante: "José Andrés Soria Ureña",
+        carrera: "Ing. Electromecánica",
+        presidente: "Ing. Álvaro Cabezas",
+        exam1: "Ing. Rene Marca Colque",
+        exam2: "Ing. Kenia Abigail Choque Quiroga",
+        tutor: "Daniela Soria Ureña",
+        modalidad: "Proyecto de Grado",
+        aula: "AUDITORIO D-6"
+      },
+
+      {
+        fecha: "2026-08-01",
+        hora: "10:30",
+        estudiante: "Sonia Villca Arias",
+        carrera: "Ing. Sistemas",
+        presidente: "Ing. Álvaro Ortuño",
+        exam1: "Ing. Franz Guaman Rivera",
+        exam2: "Ing. Marlene Aiza Choque",
+        tutor: "Abraham Mamani Veliz",
+        modalidad: "Proyecto de Grado",
+        aula: "AUDITORIO D-6"
+      }
+
+    ];
+
+
+    /* =======================================================
+       ESCAPAR HTML
+       ======================================================= */
+
+    function escapeHTML(text) {
+
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    }
+
+
+    /* =======================================================
+       FORMATO FECHA
+       ======================================================= */
+
+    function fechaBonita(fecha) {
+
+      if (!fecha) return "—";
+
+      const dias = [
+        "Domingo",
+        "Lunes",
+        "Martes",
+        "Miércoles",
+        "Jueves",
+        "Viernes",
+        "Sábado"
+      ];
+
+      const meses = [
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre"
+      ];
+
+      const partes = fecha.split("-");
+
+      if (partes.length !== 3) {
+        return fecha;
+      }
+
+      const fechaObj = new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+      );
+
+      return `${dias[fechaObj.getDay()]} ${Number(partes[2])} de ${meses[fechaObj.getMonth()]} de ${partes[0]}`;
+
+    }
+
+
+    /* =======================================================
+       RENDERIZAR TABLA
+       ======================================================= */
+
+    function renderTabla() {
+
+      const tbody =
+        document.getElementById("tablaDefensas");
+
+      tbody.innerHTML = "";
+
+
+      defensas.forEach((d, index) => {
+
+        const tr = document.createElement("tr");
+
+
+        tr.innerHTML = `
+
+          <td>
+            <input
+              type="date"
+              value="${escapeHTML(d.fecha)}"
+              onchange="actualizarDato(${index}, 'fecha', this.value)">
+          </td>
+
+
+          <td>
+            <input
+              type="time"
+              value="${escapeHTML(d.hora)}"
+              onchange="actualizarDato(${index}, 'hora', this.value)">
+          </td>
+
+
+          <td>
+            <input
+              type="text"
+              value="${escapeHTML(d.estudiante)}"
+              onchange="actualizarDato(${index}, 'estudiante', this.value)">
+          </td>
+
+
+          <td>
+
+            <select
+              onchange="actualizarDato(${index}, 'carrera', this.value)">
+
+              ${opcionCarrera("Ing. Financiera", d.carrera)}
+              ${opcionCarrera("Ing. Comercial", d.carrera)}
+              ${opcionCarrera("Ing. Telecomunicaciones", d.carrera)}
+              ${opcionCarrera("Ing. Electromecánica", d.carrera)}
+              ${opcionCarrera("Ing. Sistemas", d.carrera)}
+
+            </select>
+
+          </td>
+
+
+          <td>
+            <input
+              type="text"
+              value="${escapeHTML(d.presidente)}"
+              onchange="actualizarDato(${index}, 'presidente', this.value)">
+          </td>
+
+
+          <td>
+            <input
+              type="text"
+              value="${escapeHTML(d.exam1)}"
+              onchange="actualizarDato(${index}, 'exam1', this.value)">
+          </td>
+
+
+          <td>
+            <input
+              type="text"
+              value="${escapeHTML(d.exam2)}"
+              onchange="actualizarDato(${index}, 'exam2', this.value)">
+          </td>
+
+
+          <td>
+            <input
+              type="text"
+              value="${escapeHTML(d.tutor)}"
+              onchange="actualizarDato(${index}, 'tutor', this.value)">
+          </td>
+
+
+          <td>
+
+            <select
+              onchange="actualizarDato(${index}, 'modalidad', this.value)">
+
+              ${opcionModalidad("Examen de Grado", d.modalidad)}
+              ${opcionModalidad("Proyecto de Grado", d.modalidad)}
+
+            </select>
+
+          </td>
+
+
+          <td>
+            <input
+              type="text"
+              value="${escapeHTML(d.aula)}"
+              onchange="actualizarDato(${index}, 'aula', this.value)">
+          </td>
+
+
+          <td>
+
+            <div class="actions">
+
+              <button
+                class="btn-gold"
+                onclick="seleccionarDefensa(${index})">
+                👁
+              </button>
+
+              <button
+                class="btn-blue"
+                onclick="descargarHTML(${index})">
+                📄
+              </button>
+
+              <button
+                class="btn-red"
+                onclick="eliminarDefensa(${index})">
+                🗑
+              </button>
+
+            </div>
+
+          </td>
+
+        `;
+
+
+        tbody.appendChild(tr);
+
+      });
+
+
+      document.getElementById("contador").textContent =
+        `${defensas.length} defensa${defensas.length === 1 ? "" : "s"}`;
+
+    }
+
+
+    /* =======================================================
+       OPCIONES SELECT
+       ======================================================= */
+
+    function opcionCarrera(nombre, actual) {
+
+      return `
+        <option
+          value="${nombre}"
+          ${nombre === actual ? "selected" : ""}>
+          ${nombre}
+        </option>
+      `;
+
+    }
+
+
+    function opcionModalidad(nombre, actual) {
+
+      return `
+        <option
+          value="${nombre}"
+          ${nombre === actual ? "selected" : ""}>
+          ${nombre}
+        </option>
+      `;
+
+    }
+
+
+    /* =======================================================
+       ACTUALIZAR DATO
+       ======================================================= */
+
+    function actualizarDato(index, campo, valor) {
+
+      defensas[index][campo] = valor;
+
+      localStorage.setItem(
+        "usip_defensas",
+        JSON.stringify(defensas)
+      );
+
+      actualizarPreview();
+
+    }
+
+
+    /* =======================================================
+       AGREGAR DEFENSA
+       ======================================================= */
+
+    function agregarDefensa() {
+
+      defensas.push({
+
+        fecha: "",
+        hora: "",
+        estudiante: "",
+        carrera: "Ing. Financiera",
+        presidente: "",
+        exam1: "",
+        exam2: "",
+        tutor: "",
+        modalidad: "Proyecto de Grado",
+        aula: document.getElementById("lugar").value
+
+      });
+
+      renderTabla();
+
+      seleccionarDefensa(defensas.length - 1);
+
+    }
+
+
+    /* =======================================================
+       ELIMINAR DEFENSA
+       ======================================================= */
+
+    function eliminarDefensa(index) {
+
+      const nombre =
+        defensas[index].estudiante || "esta defensa";
+
+      if (
+        !confirm(
+          `¿Deseas eliminar a ${nombre}?`
+        )
+      ) {
+        return;
+      }
+
+      defensas.splice(index, 1);
+
+      guardarDatos();
+
+      renderTabla();
+
+      actualizarPreview();
+
+    }
+
+
+    /* =======================================================
+       SELECCIONAR DEFENSA
+       ======================================================= */
+
+    let defensaSeleccionada = 0;
+
+
+    function seleccionarDefensa(index) {
+
+      defensaSeleccionada = index;
+
+      actualizarPreview();
+
+      document
+        .getElementById("preview")
+        .scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+
+    }
+
+
+    /* =======================================================
+       ACTUALIZAR PREVIEW
+       ======================================================= */
+
+    function actualizarPreview() {
+
+      if (!defensas.length) {
+        return;
+      }
+
+      if (
+        defensaSeleccionada >= defensas.length
+      ) {
+        defensaSeleccionada = 0;
+      }
+
+      const d =
+        defensas[defensaSeleccionada];
+
+
+      document.getElementById(
+        "previewStudent"
+      ).textContent =
+        d.estudiante || "Estudiante";
+
+
+      document.getElementById(
+        "previewFecha"
+      ).textContent =
+        fechaBonita(d.fecha);
+
+
+      document.getElementById(
+        "previewHora"
+      ).textContent =
+        d.hora || "—";
+
+
+      document.getElementById(
+        "previewCarrera"
+      ).textContent =
+        d.carrera || "—";
+
+
+      document.getElementById(
+        "previewModalidad"
+      ).textContent =
+        d.modalidad || "—";
+
+
+      document.getElementById(
+        "previewAula"
+      ).textContent =
+        d.aula || "—";
+
+
+      document.getElementById(
+        "previewPresidente"
+      ).textContent =
+        d.presidente || "—";
+
+
+      document.getElementById(
+        "previewExam1"
+      ).textContent =
+        d.exam1 || "—";
+
+
+      document.getElementById(
+        "previewExam2"
+      ).textContent =
+        d.exam2 || "—";
+
+
+      document.getElementById(
+        "previewTutor"
+      ).textContent =
+        d.tutor || "—";
+
+    }
+
+
+    /* =======================================================
+       GUARDAR DATOS
+       ======================================================= */
+
+    function guardarDatos() {
+
+      const datos = {
+
+        universidad:
+          document.getElementById("universidad").value,
+
+        area:
+          document.getElementById("area").value,
+
+        lugar:
+          document.getElementById("lugar").value,
+
+        periodo:
+          document.getElementById("periodo").value,
+
+        defensas
+
+      };
+
+
+      localStorage.setItem(
+        "usip_generador",
+        JSON.stringify(datos)
+      );
+
+
+      alert(
+        "Los datos fueron guardados correctamente."
+      );
+
+    }
+
+
+    /* =======================================================
+       CARGAR DATOS
+       ======================================================= */
+
+    function cargarDatos() {
+
+      const guardado =
+        localStorage.getItem(
+          "usip_generador"
+        );
+
+
+      if (!guardado) {
+
+        alert(
+          "No existen datos guardados."
+        );
+
+        return;
+      }
+
+
+      try {
+
+        const datos =
+          JSON.parse(guardado);
+
+
+        document.getElementById(
+          "universidad"
+        ).value =
+          datos.universidad || "";
+
+
+        document.getElementById(
+          "area"
+        ).value =
+          datos.area || "";
+
+
+        document.getElementById(
+          "lugar"
+        ).value =
+          datos.lugar || "";
+
+
+        document.getElementById(
+          "periodo"
+        ).value =
+          datos.periodo || "";
+
+
+        defensas =
+          datos.defensas || [];
+
+
+        renderTabla();
+
+        actualizarPreview();
+
+
+        alert(
+          "Datos recuperados correctamente."
+        );
+
+      } catch (error) {
+
+        alert(
+          "No se pudieron recuperar los datos."
+        );
+
+      }
+
+    }
+
+
+    /* =======================================================
+       BORRAR TODO
+       ======================================================= */
+
+    function borrarTodo() {
+
+      if (
+        !confirm(
+          "¿Seguro que deseas borrar todas las defensas?"
+        )
+      ) {
+        return;
+      }
+
+
+      defensas = [];
+
+      localStorage.removeItem(
+        "usip_generador"
+      );
+
+      renderTabla();
+
+      document.getElementById(
+        "previewStudent"
+      ).textContent =
+        "Seleccione un estudiante";
+
+    }
+
+
+    /* =======================================================
+       GENERAR HTML
+       ======================================================= */
+
+    function generarHTMLSeleccionado() {
+
+      if (!defensas.length) {
+
+        alert(
+          "No existen defensas."
+        );
+
+        return;
+
+      }
+
+
+      descargarHTML(
+        defensaSeleccionada
+      );
+
+    }
+
+
+    /* =======================================================
+       CREAR DOCUMENTO HTML INDIVIDUAL
+       ======================================================= */
+
+    function crearHTMLAviso(d) {
+
+      const universidad =
+        document.getElementById(
+          "universidad"
+        ).value ||
+        "Universidad Simón I. Patiño";
+
+
+      const area =
+        document.getElementById(
+          "area"
+        ).value ||
+        "Área de Titulación · Dirección Académica";
+
+
+      const periodo =
+        document.getElementById(
+          "periodo"
+        ).value ||
+        "";
+
+
+      const fecha =
+        fechaBonita(d.fecha);
+
+
+      return `<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0">
+
+<title>
+Defensa Pública - ${escapeHTML(d.estudiante)}
+</title>
+
+<style>
+
+:root{
+
+  --green:#2f5b2a;
+  --gold:#b88616;
+
+  --ink:#1a1d29;
+  --muted:#5b6170;
+
+  --bg:#f4f6f9;
+  --line:#e5e7eb;
+
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+
+  margin:0;
+
+  background:var(--bg);
+
+  color:var(--ink);
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+
+}
+
+.page{
+
+  width:100%;
+
+  max-width:720px;
+
+  margin:30px auto;
+
+  padding:15px;
+
+}
+
+.card{
+
+  background:white;
+
+  border-radius:20px;
+
+  overflow:hidden;
+
+  box-shadow:
+    0 12px 35px rgba(0,0,0,.08);
+
+}
+
+.header{
+
+  text-align:center;
+
+  padding:30px 20px;
+
+  border-bottom:
+    4px solid var(--gold);
+
+}
+
+.logo{
+
+  font-family:
+    "Times New Roman",
+    serif;
+
+  font-size:46px;
+
+  font-weight:bold;
+
+  letter-spacing:6px;
+
+}
+
+.logo .u,
+.logo .i{
+  color:var(--gold);
+}
+
+.logo .s,
+.logo .p{
+  color:var(--green);
+}
+
+.university{
+
+  margin-top:4px;
+
+  font-size:11px;
+
+  text-transform:uppercase;
+
+  letter-spacing:.1em;
+
+  color:var(--green);
+
+}
+
+.title{
+
+  margin-top:25px;
+
+  font-size:22px;
+
+  font-weight:800;
+
+}
+
+.student{
+
+  margin-top:8px;
+
+  font-size:28px;
+
+  line-height:1.2;
+
+  font-weight:800;
+
+  color:var(--green);
+
+}
+
+.content{
+
+  padding:22px;
+
+}
+
+.info{
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,1fr);
+
+  gap:10px;
+
+}
+
+.box{
+
+  padding:14px;
+
+  border:
+    1px solid var(--line);
+
+  background:#f8fafc;
+
+  border-radius:12px;
+
+}
+
+.label{
+
+  color:var(--muted);
+
+  font-size:10px;
+
+  font-weight:800;
+
+  text-transform:uppercase;
+
+}
+
+.value{
+
+  margin-top:4px;
+
+  font-size:15px;
+
+  font-weight:700;
+
+}
+
+.section{
+
+  margin-top:25px;
+
+  margin-bottom:10px;
+
+  padding-bottom:5px;
+
+  border-bottom:
+    2px solid var(--gold);
+
+  color:var(--green);
+
+  font-weight:800;
+
+}
+
+.jury{
+
+  padding:10px 0;
+
+  border-bottom:
+    1px solid var(--line);
+
+}
+
+.jury-label{
+
+  color:var(--muted);
+
+  font-size:10px;
+
+  font-weight:800;
+
+}
+
+.jury-name{
+
+  margin-top:2px;
+
+  font-weight:700;
+
+}
+
+.recommendations{
+
+  padding-left:20px;
+
+  color:#374151;
+
+}
+
+.recommendations li{
+
+  margin-bottom:8px;
+
+  font-size:13px;
+
+}
+
+.footer{
+
+  text-align:center;
+
+  padding:15px;
+
+  background:#f8fafc;
+
+  color:var(--muted);
+
+  font-size:11px;
+
+}
+
+@media(max-width:520px){
+
+  .page{
+
+    margin:0 auto;
+
+    padding:8px;
+
+  }
+
+  .header{
+
+    padding:25px 15px;
+
+  }
+
+  .logo{
+
+    font-size:38px;
+
+  }
+
+  .student{
+
+    font-size:22px;
+
+  }
+
+  .info{
+
+    grid-template-columns:1fr;
+
+  }
+
+  .content{
+
+    padding:16px;
+
+  }
+
+}
+
+@media print{
+
+  body{
+    background:white;
+  }
+
+  .page{
+    margin:0;
+    padding:0;
+  }
+
+  .card{
+    box-shadow:none;
+  }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="page">
+
+<div class="card">
+
+
+<header class="header">
+
+<div class="logo">
+
+<span class="u">U</span>
+<span class="s">S</span>
+<span class="i">I</span>
+<span class="p">P</span>
+
+</div>
+
+<div class="university">
+
+${escapeHTML(universidad)}
+
+</div>
+
+<div class="title">
+
+DEFENSA PÚBLICA
+
+</div>
+
+<div class="student">
+
+${escapeHTML(d.estudiante)}
+
+</div>
+
+</header>
+
+
+<main class="content">
+
+
+<div class="info">
+
+
+<div class="box">
+
+<div class="label">
+Fecha
+</div>
+
+<div class="value">
+${escapeHTML(fecha)}
+</div>
+
+</div>
+
+
+<div class="box">
+
+<div class="label">
+Hora
+</div>
+
+<div class="value">
+${escapeHTML(d.hora || "—")}
+</div>
+
+</div>
+
+
+<div class="box">
+
+<div class="label">
+Carrera
+</div>
+
+<div class="value">
+${escapeHTML(d.carrera)}
+</div>
+
+</div>
+
+
+<div class="box">
+
+<div class="label">
+Modalidad
+</div>
+
+<div class="value">
+${escapeHTML(d.modalidad)}
+</div>
+
+</div>
+
+
+<div
+  class="box"
+  style="grid-column:1/-1">
+
+<div class="label">
+Lugar
+</div>
+
+<div class="value">
+${escapeHTML(d.aula)}
+</div>
+
+</div>
+
+
+</div>
+
+
+<div class="section">
+
+TRIBUNAL EVALUADOR
+
+</div>
+
+
+<div class="jury">
+
+<div class="jury-label">
+PRESIDENTE
+</div>
+
+<div class="jury-name">
+${escapeHTML(d.presidente)}
+</div>
+
+</div>
+
+
+<div class="jury">
+
+<div class="jury-label">
+EXAMINADOR I
+</div>
+
+<div class="jury-name">
+${escapeHTML(d.exam1)}
+</div>
+
+</div>
+
+
+<div class="jury">
+
+<div class="jury-label">
+EXAMINADOR II
+</div>
+
+<div class="jury-name">
+${escapeHTML(d.exam2)}
+</div>
+
+</div>
+
+
+<div class="jury">
+
+<div class="jury-label">
+TUTOR
+</div>
+
+<div class="jury-name">
+${escapeHTML(d.tutor)}
+</div>
+
+</div>
+
+
+<div class="section">
+
+RECOMENDACIONES PARA LA DEFENSA
+
+</div>
+
+
+<ol class="recommendations">
+
+<li>
+Llegar 30 minutos antes de la hora asignada.
+</li>
+
+<li>
+Llevar una copia de respaldo de la presentación.
+</li>
+
+<li>
+Guardar las diapositivas en una memoria USB o en la nube.
+</li>
+
+<li>
+Verificar con anticipación los elementos técnicos necesarios.
+</li>
+
+<li>
+Utilizar vestimenta formal o semiformal.
+</li>
+
+<li>
+Realizar una exposición clara y estructurada.
+</li>
+
+<li>
+Escuchar con atención las preguntas del tribunal.
+</li>
+
+<li>
+Prever un puntero para el cambio de diapositivas.
+</li>
+
+<li>
+El refrigerio para el tribunal es opcional.
+</li>
+
+<li>
+Agradecer al tribunal al finalizar la defensa.
+</li>
+
+</ol>
+
+
+</main>
+
+
+<footer class="footer">
+
+${escapeHTML(area)}
+
+<br>
+
+${escapeHTML(periodo)}
+
+</footer>
+
+
+</div>
+
+</div>
+
+</body>
+
+</html>`;
+
+    }
+
+
+    /* =======================================================
+       DESCARGAR HTML
+       ======================================================= */
+
+    function descargarHTML(index) {
+
+      const d =
+        defensas[index];
+
+
+      if (!d.estudiante.trim()) {
+
+        alert(
+          "Primero debes colocar el nombre del estudiante."
+        );
+
+        return;
+
+      }
+
+
+      const html =
+        crearHTMLAviso(d);
+
+
+      const blob =
+        new Blob(
+          [html],
+          {
+            type:
+              "text/html;charset=utf-8"
+          }
+        );
+
+
+      const url =
+        URL.createObjectURL(blob);
+
+
+      const a =
+        document.createElement("a");
+
+
+      const nombre =
+        d.estudiante
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+
+
+      a.href = url;
+
+      a.download =
+        `Aviso-${nombre}.html`;
+
+
+      document.body.appendChild(a);
+
+      a.click();
+
+      a.remove();
+
+      URL.revokeObjectURL(url);
+
+    }
+
+
+    /* =======================================================
+       INICIALIZAR
+       ======================================================= */
+
+    function iniciar() {
+
+      const guardado =
+        localStorage.getItem(
+          "usip_generador"
+        );
+
+
+      if (guardado) {
+
+        try {
+
+          const datos =
+            JSON.parse(guardado);
+
+
+          document.getElementById(
+            "universidad"
+          ).value =
+            datos.universidad ||
+            "Universidad Simón I. Patiño";
+
+
+          document.getElementById(
+            "area"
+          ).value =
+            datos.area ||
+            "Área de Titulación · Dirección Académica";
+
+
+          document.getElementById(
+            "lugar"
+          ).value =
+            datos.lugar ||
+            "AUDITORIO D-6";
+
+
+          document.getElementById(
+            "periodo"
+          ).value =
+            datos.periodo ||
+            "Julio – Agosto 2026";
+
+
+          if (
+            Array.isArray(datos.defensas)
+          ) {
+
+            defensas =
+              datos.defensas;
+
+          }
+
+        } catch (error) {
+
+          console.log(
+            "No se pudieron cargar los datos guardados."
+          );
+
+        }
+
+      }
+
+
+      renderTabla();
+
+      actualizarPreview();
+
+    }
+
+
+    iniciar();
+
+
+  </script>
+
+
+</body>
+
+</html>

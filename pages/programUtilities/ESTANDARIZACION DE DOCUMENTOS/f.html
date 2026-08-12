@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Escáner CI PRO</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  body {
+    font-family: Arial;
+    text-align: center;
+    background: #f5f5f5;
+  }
+
+  canvas {
+    border: 2px solid #333;
+    margin-top: 10px;
+    cursor: crosshair;
+    border-radius: 8px;
+  }
+
+  button {
+    padding: 10px 15px;
+    margin: 5px;
+    border: none;
+    border-radius: 6px;
+    background: #007bff;
+    color: white;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #0056b3;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>Escáner de Documentos</h2>
+
+<input type="file" id="fileInput" accept="application/pdf,image/*">
+
+<button onclick="paginaAnterior()">⬅️ Anterior</button>
+<span id="infoPagina">Página 0 de 0</span>
+<button onclick="paginaSiguiente()">Siguiente ➡️</button>
+
+<br>
+<canvas id="canvas"></canvas>
+
+<br><br>
+<button onclick="recortar()">Recortar</button>
+
+<br><br>
+<button onclick="exportarCI()">CI</button>
+<button onclick="exportarCN()">CN</button>
+<button onclick="exportarTP()">TP</button>
+
+
+<div id="contenedorRecortes"></div>
+
+<script>
+
+// ================= VARIABLES =================
+
+const input = document.getElementById('fileInput');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let imagenBase = null;
+let puntos = [];
+let dragging = -1;
+let modo = null;
+let recortes = [];
+
+let pdfDoc = null;
+let paginaActual = 1;
+let totalPaginas = 0;
+
+// ================= CARGA =================
+
+input.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.type === "application/pdf") cargarPDF(file);
+  else cargarImagen(file);
+});
+
+function cargarPDF(file) {
+  const reader = new FileReader();
+
+  reader.onload = function() {
+    const typedarray = new Uint8Array(this.result);
+
+    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+
+      pdfDoc = pdf;
+      totalPaginas = pdf.numPages;
+      paginaActual = 1;
+
+      renderPagina(paginaActual);
+    });
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPagina(num) {
+  pdfDoc.getPage(num).then(page => {
+
+    const viewport = page.getViewport({ scale: 2 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    page.render({
+      canvasContext: ctx,
+      viewport: viewport
+    }).promise.then(() => {
+
+      imagenBase = new Image();
+      imagenBase.src = canvas.toDataURL();
+
+      imagenBase.onload = () => {
+        inicializarPuntos(); // 🔥 mantiene tu lógica original
+      };
+
+      // 🔥 actualizar texto si existe
+      let info = document.getElementById("infoPagina");
+      if(info){
+        info.innerText = "Página " + num + " de " + totalPaginas;
+      }
+    });
+
+  });
+}
+
+function paginaSiguiente() {
+  if (paginaActual < totalPaginas) {
+    paginaActual++;
+    renderPagina(paginaActual);
+  }
+}
+
+function paginaAnterior() {
+  if (paginaActual > 1) {
+    paginaActual--;
+    renderPagina(paginaActual);
+  }
+}
+
+function cargarImagen(file) {
+  const img = new Image();
+  img.onload = function() {
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    imagenBase = img;
+    inicializarPuntos();
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+// ================= PUNTOS =================
+
+function inicializarPuntos() {
+  puntos = [
+    {x: 50, y: 50},
+    {x: canvas.width - 50, y: 50},
+    {x: canvas.width - 50, y: canvas.height - 50},
+    {x: 50, y: canvas.height - 50}
+  ];
+  dibujar();
+}
+
+// ================= DIBUJO =================
+
+function dibujar() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.drawImage(imagenBase, 0, 0);
+
+  // 🔥 Sombra suave
+  ctx.shadowColor = "black";
+  ctx.shadowBlur = 8;
+
+  // 🔴 líneas
+  ctx.strokeStyle = "rgba(255,0,0,0.8)";
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+  ctx.moveTo(puntos[0].x, puntos[0].y);
+  puntos.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+
+  // 🔵 puntos
+  puntos.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 8, 0, Math.PI*2);
+    ctx.fillStyle = "#00aaff";
+    ctx.fill();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+}
+
+// ================= INTERACCIÓN =================
+
+canvas.addEventListener('mousedown', e => {
+  let rect = canvas.getBoundingClientRect();
+  let x = e.clientX - rect.left;
+  let y = e.clientY - rect.top;
+
+  dragging = -1;
+  modo = null;
+
+  // puntos
+  puntos.forEach((p, i) => {
+    if (Math.hypot(p.x - x, p.y - y) < 10) {
+      dragging = i;
+      modo = "punto";
+    }
+  });
+
+  // lados
+  if (!modo) {
+    if (cercaLinea(puntos[0], puntos[1], x, y)) { dragging="top"; modo="lado";}
+    else if (cercaLinea(puntos[2], puntos[3], x, y)) { dragging="bottom"; modo="lado";}
+    else if (cercaLinea(puntos[0], puntos[3], x, y)) { dragging="left"; modo="lado";}
+    else if (cercaLinea(puntos[1], puntos[2], x, y)) { dragging="right"; modo="lado";}
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  let rect = canvas.getBoundingClientRect();
+  let x = e.clientX - rect.left;
+  let y = e.clientY - rect.top;
+
+  // 🔥 cursor dinámico
+  canvas.style.cursor = detectarCursor(x,y);
+
+  if (dragging === -1 && !modo) return;
+
+  if (modo === "punto") {
+    puntos[dragging].x = x;
+    puntos[dragging].y = y;
+  }
+
+  if (modo === "lado") {
+    if (dragging==="top") { puntos[0].y=y; puntos[1].y=y;}
+    if (dragging==="bottom") { puntos[2].y=y; puntos[3].y=y;}
+    if (dragging==="left") { puntos[0].x=x; puntos[3].x=x;}
+    if (dragging==="right") { puntos[1].x=x; puntos[2].x=x;}
+  }
+
+  dibujar();
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragging = -1;
+  modo = null;
+});
+
+// ================= DETECCIÓN =================
+
+function detectarCursor(x,y){
+  for (let p of puntos){
+    if (Math.hypot(p.x-x,p.y-y)<10) return "grab";
+  }
+  if (cercaLinea(puntos[0], puntos[1], x, y)) return "ns-resize";
+  if (cercaLinea(puntos[2], puntos[3], x, y)) return "ns-resize";
+  if (cercaLinea(puntos[0], puntos[3], x, y)) return "ew-resize";
+  if (cercaLinea(puntos[1], puntos[2], x, y)) return "ew-resize";
+  return "default";
+}
+
+function cercaLinea(p1,p2,x,y){
+  return distanciaLinea(x,y,p1,p2)<10;
+}
+
+function distanciaLinea(px,py,p1,p2){
+  let A=px-p1.x, B=py-p1.y;
+  let C=p2.x-p1.x, D=p2.y-p1.y;
+  let dot=A*C+B*D;
+  let len=C*C+D*D;
+  let t=Math.max(0,Math.min(1,dot/len));
+  let xx=p1.x+t*C, yy=p1.y+t*D;
+  return Math.hypot(px-xx,py-yy);
+}
+
+// ================= RECORTE =================
+
+function recortar(){
+  let borde = 5;
+  let targetW = 850, targetH = 550;
+  let radio = 20; // 🔥 controla redondeo
+
+  let temp = document.createElement('canvas');
+  let tctx = temp.getContext('2d');
+  temp.width = canvas.width;
+  temp.height = canvas.height;
+  tctx.drawImage(imagenBase,0,0);
+
+  let final = document.createElement('canvas');
+  let fctx = final.getContext('2d');
+
+  final.width = targetW + borde * 2;
+  final.height = targetH + borde * 2;
+
+  // 🔥 función rectángulo redondeado
+  function rectRedondeado(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // 🔥 FONDO GRIS REDONDEADO
+  fctx.fillStyle = "rgb(235,235,235)";
+  rectRedondeado(fctx, 0, 0, final.width, final.height, radio);
+  fctx.fill();
+
+  // 🔥 CLIP PARA LA IMAGEN (clave)
+  fctx.save();
+  rectRedondeado(fctx, borde, borde, targetW, targetH, radio);
+  fctx.clip();
+
+  // 🔥 DIBUJAR IMAGEN
+  fctx.drawImage(
+    temp,
+    puntos[0].x,
+    puntos[0].y,
+    puntos[2].x - puntos[0].x,
+    puntos[2].y - puntos[0].y,
+    borde,
+    borde,
+    targetW,
+    targetH
+  );
+
+  fctx.restore();
+
+  recortes.push(final);
+
+  final.style.border = "2px solid green";
+  final.style.margin = "10px";
+
+agregarRecorteUI(final);
+}
+
+
+function agregarRecorteUI(canvasRecorte){
+  const contenedor = document.getElementById("contenedorRecortes");
+
+  const box = document.createElement("div");
+  box.style.display = "inline-block";
+  box.style.margin = "10px";
+  box.style.textAlign = "center";
+
+  canvasRecorte.style.display = "block";
+  canvasRecorte.style.border = "2px solid green";
+
+  // botones
+  const eliminar = document.createElement("button");
+  eliminar.innerText = "❌";
+
+  const izq = document.createElement("button");
+  izq.innerText = "⬅️";
+
+  const der = document.createElement("button");
+  der.innerText = "➡️";
+
+  // eventos
+  eliminar.onclick = () => {
+    let index = Array.from(contenedor.children).indexOf(box);
+    recortes.splice(index,1);
+    box.remove();
+  };
+
+  izq.onclick = () => {
+    let index = Array.from(contenedor.children).indexOf(box);
+    if(index > 0){
+      [recortes[index], recortes[index-1]] = [recortes[index-1], recortes[index]];
+      contenedor.insertBefore(box, contenedor.children[index-1]);
+    }
+  };
+
+  der.onclick = () => {
+    let index = Array.from(contenedor.children).indexOf(box);
+    if(index < recortes.length-1){
+      [recortes[index], recortes[index+1]] = [recortes[index+1], recortes[index]];
+      contenedor.insertBefore(contenedor.children[index+1], box);
+    }
+  };
+
+  box.appendChild(canvasRecorte);
+  box.appendChild(eliminar);
+  box.appendChild(izq);
+  box.appendChild(der);
+
+  contenedor.appendChild(box);
+}
+// ================= PDF =================
+
+function crearPDF(){
+  const { jsPDF } = window.jspdf;
+  return new jsPDF({unit:'cm',format:[21.6,33]});
+}
+
+function exportarCI(){
+  if(recortes.length<2) return alert("2 recortes");
+
+  let pdf=crearPDF();
+  let x=(21.6-8.5)/2;
+  let y=(33-(5.5*2+1))/2-8;
+
+  pdf.addImage(recortes[0].toDataURL(),'PNG',x,y,8.5,5.5);
+  pdf.addImage(recortes[1].toDataURL(),'PNG',x,y+8.5,8.5,5.5);
+
+  pdf.save("CI.pdf");
+}
+
+function exportarCN(){
+  if(!recortes.length) return alert("1 recorte");
+
+  let pdf = crearPDF();
+
+  let w = 15;
+  let h = 20.5;
+
+  // 🔥 centrar horizontal
+  let x = (21.6 - w) / 2;
+
+  // 🔥 posición vertical (control manual)
+  let y = 2; // 🔥 prueba 2, 3, 4 según te guste
+
+  pdf.addImage(
+    recortes[0].toDataURL(),
+    'PNG',
+    x,
+    y,
+    w,
+    h
+  );
+
+  pdf.save("CN.pdf");
+}
+
+function exportarTP(){
+  if(!recortes.length) return alert("1 recorte");
+
+  let pdf=crearPDF();
+  pdf.addImage(recortes[0].toDataURL(),'PNG',0,0,21.6,33);
+  pdf.save("TP.pdf");
+}
+
+</script>
+
+</body>
+</html>

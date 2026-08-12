@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Certificados Oficio 3 por Imagen</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <style>
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .pagina {
+      position: relative;
+  width: 33cm;
+  height: 21.6cm;
+      overflow: hidden;
+      display: block;
+      box-sizing: border-box;
+      margin: 0 auto;
+    }
+
+    .portada {
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .portada h1 {
+      font-size: 36px;
+    }
+
+    .pagina-cert {
+      background-image: url('tarjetasVersion1.jpg'); /* Cambia por tu imagen */
+      background-size: cover;
+      background-position: center;
+    }
+
+    .nombre {
+        position: absolute;
+        font-size: 12px;
+        font-weight: bold;
+        color: #000;
+        width: 6cm;           /* Ajusta según tu plantilla */
+        white-space: normal;   /* Permite saltos de línea */
+        word-wrap: break-word; /* Rompe palabras largas */
+        line-height: 1.2;      /* Mejora lectura */
+    }
+
+    /* Posiciones para 3 nombres por página */
+    .nombre1 { top: 371.8px; left: 110px; }
+    .nombre2 { top: 419.8px; left: 110px; }
+    .nombre3 { top: 371.8px; left: 519px; }
+    .nombre4 { top: 419.8px; left: 519px; }
+    .nombre5 { top: 370.8px; left: 900px; }
+    .nombre6 { top: 419.8px; left: 900px; }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .solo-web,
+      .portada {
+        display: none !important;
+      }
+
+      .pagina {
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Página 1: Portada o instrucción -->
+  <div class="pagina portada">
+    <div class="solo-web" style="text-align: center; ">
+      <h2>Sube el archivo Excel:</h2>
+      <input type="file" id="excelFile" accept=".xlsx, .xls" />
+    </div>
+
+    <div>
+      <h1>Instrucciones</h1>
+      <p>Esta es la primera página, destinada a contener indicaciones generales, portada o mensaje de introducción.</p>
+      <p>Las páginas siguientes contienen las fotografias con fondo.</p>
+      <a href="DATOS.xlsx" download="PlantillaCertificados.xlsx">📥 Descargar Excel Para LLenar datos</a>
+    </div>
+  </div>
+
+  <!-- Contenedor para los certificados -->
+  <div id="output"></div>
+
+  <script>
+    document.getElementById('excelFile').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+  
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+  
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+  
+        const output = document.getElementById('output');
+        output.innerHTML = '';
+  
+        for (let i = 0; i < rows.length; i += 6) {
+          // Verifica si el nombre1 está vacío o no definido
+          if (!rows[i] || !rows[i].Nombre || rows[i].Nombre.trim() === '') {
+            break; // Termina todo el bucle
+          }
+  
+          const page = document.createElement('div');
+          page.className = 'pagina pagina-cert';
+  
+          for (let j = 0; j < 6; j++) {
+            if (rows[i + j] && rows[i + j].Nombre && rows[i + j].Nombre.trim() !== '') {
+              const fullName = `${rows[i + j].Nombre}`;
+              let styledName = fullName;
+  
+              if (j === 0 || j === 2 || j === 4) {
+                styledName = `<strong>${fullName.slice(0, 7)}</strong>${fullName.slice(7)}`;
+              } else if (j === 1 || j === 3 || j === 5) {
+                styledName = `<strong>${fullName.slice(0, 9)}</strong>${fullName.slice(9)}`;
+              }
+  
+              const nameDiv = document.createElement('div');
+              nameDiv.className = `nombre nombre${j + 1}`;
+              nameDiv.innerHTML = styledName;
+              page.appendChild(nameDiv);
+            }
+          }
+  
+          output.appendChild(page);
+        }
+      };
+  
+      reader.readAsArrayBuffer(file);
+    });
+  </script>
+  
+
+</body>
+</html>

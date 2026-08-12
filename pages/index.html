@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SISTEMA SAMUS - Gestores</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       DESIGN TOKENS
+       ============================================================ */
+    :root {
+      --color-primary: #155724;
+      --color-primary-hover: #0e3f19;
+      --color-primary-soft: #e6f2e6;
+      --color-secondary: #19692c;
+      --color-accent: #2f8f4e;
+
+      --color-bg: #eef5ef;
+      --color-surface: #ffffff;
+      --color-surface-elevated: #ffffff;
+      --color-border: #d7e5da;
+      --color-border-strong: #b9d1bd;
+
+      --color-text-primary: #16241a;
+      --color-text-secondary: #5c6f60;
+      --color-text-inverse: #eaf5ec;
+
+      --color-success: #19692c;
+      --color-warning: #b3821f;
+      --color-warning-bg: #f3e6cd;
+      --color-error: #b3261e;
+      --color-info: #1f6f8b;
+
+      --font-display: 'Manrope', 'Segoe UI', sans-serif;
+      --font-body: 'Inter', 'Segoe UI', sans-serif;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+
+      --shadow-sm: 0 1px 2px rgba(21, 87, 36, 0.06), 0 1px 3px rgba(21, 87, 36, 0.08);
+      --shadow-md: 0 4px 10px rgba(21, 87, 36, 0.08), 0 2px 4px rgba(21, 87, 36, 0.06);
+      --shadow-lg: 0 12px 28px rgba(21, 87, 36, 0.14);
+
+      --transition-fast: 150ms ease;
+      --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      background-color: var(--color-bg);
+      background-image:
+        radial-gradient(circle at 0% 0%, rgba(25, 105, 44, 0.05), transparent 45%),
+        radial-gradient(circle at 100% 0%, rgba(25, 105, 44, 0.04), transparent 40%);
+      background-attachment: fixed;
+      font-family: var(--font-body);
+      color: var(--color-text-primary);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    ::selection {
+      background-color: var(--color-secondary);
+      color: var(--color-text-inverse);
+    }
+
+    /* Visible, accessible focus ring across interactive elements */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    .btn:focus-visible {
+      outline: 3px solid rgba(25, 105, 44, 0.35);
+      outline-offset: 2px;
+    }
+
+    /* ============================================================
+       NAVBAR
+       ============================================================ */
+    .navbar {
+      background-color: var(--color-primary) !important;
+      box-shadow: var(--shadow-md);
+    }
+    .navbar .navbar-brand, .navbar .nav-link {
+      color: var(--color-text-inverse) !important;
+      font-family: var(--font-display);
+      transition: color var(--transition-fast), opacity var(--transition-fast);
+    }
+    .navbar .nav-link {
+      opacity: 0.85;
+      position: relative;
+    }
+    .navbar .nav-link:hover {
+      opacity: 1;
+    }
+    .navbar .nav-link.active {
+      font-weight: bold;
+      color: #ffffff !important;
+      opacity: 1;
+    }
+
+    /* ============================================================
+       LAYOUT / CONTAINER
+       ============================================================ */
+    .container {
+      max-width: 1200px;
+      padding-left: clamp(0.9rem, 3vw, 1.5rem);
+      padding-right: clamp(0.9rem, 3vw, 1.5rem);
+    }
+
+    h1, .h1 { font-family: var(--font-display); }
+
+    #tituloSeccion {
+      font-family: var(--font-display);
+      letter-spacing: -0.02em;
+      color: var(--color-primary);
+      font-size: clamp(1.6rem, 4vw, 2.25rem);
+    }
+
+    #descripcionSeccion {
+      font-size: clamp(0.9rem, 2.2vw, 1rem);
+    }
+
+    /* ============================================================
+       SECTION MENU (Usuarios / Teléfonos / Correos / Diplomados)
+       ============================================================ */
+    .d-flex.justify-content-center.gap-3.mb-4 {
+      flex-wrap: wrap;
+      row-gap: 0.75rem;
+    }
+
+    .btn-outline-success,
+    .btn-outline-primary,
+    .btn-outline-warning {
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      padding: 0.55rem 1.15rem;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-outline-success:hover,
+    .btn-outline-primary:hover,
+    .btn-outline-warning:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .btn-outline-success:active,
+    .btn-outline-primary:active,
+    .btn-outline-warning:active {
+      transform: translateY(0);
+    }
+
+    /* Filter select */
+    #filtroEstado.form-select {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border-strong);
+      box-shadow: var(--shadow-sm);
+      padding: 0.55rem 2.2rem 0.55rem 0.9rem;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    #filtroEstado.form-select:focus {
+      border-color: var(--color-secondary);
+      box-shadow: 0 0 0 3px rgba(25, 105, 44, 0.15);
+    }
+
+    /* ============================================================
+       PRIMARY ACTION BUTTON (Agregar)
+       ============================================================ */
+    .btn-success {
+      background-color: var(--color-secondary);
+      border-color: var(--color-primary);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 0.7rem 1.25rem;
+      box-shadow: var(--shadow-sm);
+      transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .btn-success:hover {
+      background-color: var(--color-primary-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .btn-success:active {
+      transform: translateY(0);
+    }
+    .btn-success:focus-visible {
+      box-shadow: 0 0 0 3px rgba(25, 105, 44, 0.3);
+    }
+    .btn-success:disabled {
+      background-color: var(--color-border-strong);
+      border-color: var(--color-border-strong);
+      color: var(--color-text-secondary);
+      box-shadow: none;
+      transform: none;
+    }
+
+    #botonAgregar {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .btn-warning {
+      background-color: #dbe9dc;
+      color: var(--color-primary);
+      font-weight: 600;
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-warning:hover {
+      background-color: #c3ddc5;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ============================================================
+       SEARCH INPUT
+       ============================================================ */
+    .buscador-global {
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border-strong);
+      padding: 0.7rem 1rem;
+      background-color: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .buscador-global::placeholder {
+      color: var(--color-text-secondary);
+    }
+    .buscador-global:focus {
+      border-color: var(--color-secondary);
+      box-shadow: 0 0 0 3px rgba(25, 105, 44, 0.15);
+      outline: none;
+    }
+
+    /* ============================================================
+       TABLES
+       ============================================================ */
+    .table-responsive {
+      background-color: var(--color-surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--color-border);
+      padding: 0.25rem;
+      overflow: hidden;
+    }
+
+    table.tabla-filtrable {
+      margin-bottom: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .table-dark, .table-primary, .table-warning {
+      background-color: var(--color-primary) !important;
+    }
+    thead.table-primary th {
+      background-color: var(--color-info) !important;
+      color: #ffffff !important;
+    }
+    thead.table-warning th {
+      background-color: var(--color-warning) !important;
+      color: #ffffff !important;
+    }
+    thead th {
+      color: var(--color-text-inverse);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      border: none;
+      padding: 0.85rem 1rem;
+      white-space: nowrap;
+    }
+
+    table.tabla-filtrable tbody td {
+      padding: 0.8rem 1rem;
+      vertical-align: middle;
+      color: var(--color-text-primary);
+      border-color: var(--color-border);
+    }
+
+    .table-hover tbody tr {
+      transition: background-color var(--transition-fast);
+    }
+    .table-hover tbody tr:hover {
+      background-color: var(--color-primary-soft);
+    }
+
+    table.tabla-filtrable tbody tr td button,
+    table.tabla-filtrable tbody tr td .btn {
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       MODAL
+       ============================================================ */
+    .modal-content {
+      border-radius: var(--radius-lg);
+      border: none;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .modal-header {
+      background-color: var(--color-secondary);
+      color: var(--color-text-inverse);
+      font-weight: bold;
+      font-family: var(--font-display);
+      border-bottom: none;
+      padding: 1.1rem 1.5rem;
+    }
+    .modal-header .btn-close {
+      filter: brightness(0) invert(1);
+      opacity: 0.85;
+      transition: opacity var(--transition-fast);
+    }
+    .modal-header .btn-close:hover {
+      opacity: 1;
+    }
+    .modal-body {
+      padding: 1.5rem;
+    }
+    .modal-body .form-control,
+    .modal-body .form-select {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border-strong);
+      padding: 0.6rem 0.85rem;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .modal-body .form-control:focus,
+    .modal-body .form-select:focus {
+      border-color: var(--color-secondary);
+      box-shadow: 0 0 0 3px rgba(25, 105, 44, 0.15);
+    }
+    .modal-body label {
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: 0.3rem;
+    }
+    .modal.fade .modal-dialog {
+      transition: transform 0.25s ease-out, opacity 0.2s ease-out;
+    }
+
+    /* ============================================================
+       CARD HEADER (generic, used elsewhere in the system)
+       ============================================================ */
+    .card-header {
+      background-color: var(--color-secondary) !important;
+      color: var(--color-text-inverse) !important;
+      font-weight: bold;
+      font-family: var(--font-display);
+      border-bottom: none;
+    }
+    .card {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ============================================================
+       LOADER
+       ============================================================ */
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(238, 245, 239, 0.96);
+      backdrop-filter: blur(2px);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .loader-img {
+      width: 80px;
+      height: 80px;
+      animation: spin 1.5s linear infinite;
+      filter: drop-shadow(0 4px 10px rgba(21, 87, 36, 0.25));
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .loader.hidden {
+      display: none;
+    }
+
+    .loader p {
+      margin-top: 1rem;
+      font-weight: bold;
+      font-family: var(--font-display);
+      color: var(--color-primary);
+      letter-spacing: 0.02em;
+    }
+
+    /* ============================================================
+       RESPONSIVE — TABLET
+       ============================================================ */
+    @media (max-width: 992px) {
+      #botonAgregar {
+        width: 100% !important;
+      }
+    }
+
+    /* ============================================================
+       RESPONSIVE — MOBILE CARD-STYLE TABLES
+       Every row becomes a self-contained card. Labels sit ABOVE their
+       value (never side-by-side) so long names/emails/phone numbers
+       always wrap and stay fully visible — nothing is cropped,
+       truncated with ellipsis, or hidden with display:none.
+       ============================================================ */
+    @media (max-width: 900px) {
+      table thead {
+        /* Visually hidden, but not display:none: keeps the table
+           semantically correct and avoids any accessibility-tool
+           confusion, while the labels are re-shown per field below. */
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .table-responsive {
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        overflow: visible;
+      }
+
+      table.tabla-filtrable {
+        display: block;
+        width: 100%;
+      }
+
+      table.tabla-filtrable tbody {
+        display: block;
+        width: 100%;
+      }
+
+      /* ---- Card ---- */
+      table.tabla-filtrable tr {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto 1rem auto;
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem 1rem 0.75rem;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+        text-align: center;
+      }
+
+      /* ---- Each field: label above value, centered, free to wrap ---- */
+      table.tabla-filtrable td {
+        display: block;
+        width: 100%;
+        padding: 0.55rem 0.25rem;
+        border: none;
+        border-bottom: 1px solid var(--color-border);
+        text-align: center;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+
+      table.tabla-filtrable td:last-child {
+        border-bottom: none;
+      }
+
+      table.tabla-filtrable td::before {
+        content: attr(data-label);
+        display: block;
+        font-family: var(--font-display);
+        font-weight: 700;
+        color: var(--color-text-secondary);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.3rem;
+      }
+
+      /* Value text itself: clear hierarchy under its label */
+      table.tabla-filtrable td {
+        font-size: 0.98rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        line-height: 1.4;
+      }
+
+      /* ---- ID: consistently the first column on every table in this
+         system — demote it to a small badge pinned to the card corner
+         so the important fields lead the card, without deleting it or
+         changing the DOM/JS hooks. ---- */
+      table.tabla-filtrable td[data-label="Id"],
+      table.tabla-filtrable td[data-label="ID"] {
+        position: absolute;
+        top: 0.65rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        max-width: calc(100% - 1.5rem);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.15rem 0.7rem;
+        border: 1px solid var(--color-border-strong);
+        border-bottom: 1px solid var(--color-border-strong);
+        border-radius: 999px;
+        background-color: var(--color-primary-soft);
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--color-primary);
+      }
+      table.tabla-filtrable td[data-label="Id"]::before,
+      table.tabla-filtrable td[data-label="ID"]::before {
+        content: attr(data-label) ":";
+        display: inline;
+        margin-bottom: 0;
+        font-size: 0.72rem;
+      }
+
+      /* ---- Actions: separated footer, full-width comfortable
+         tap targets instead of small inline links/buttons. ---- */
+      table.tabla-filtrable td[data-label="Acciones"],
+      table.tabla-filtrable td[data-label="Acción"] {
+        margin-top: 0.35rem;
+        padding-top: 0.85rem;
+        border-top: 1px dashed var(--color-border-strong);
+      }
+      table.tabla-filtrable td[data-label="Acciones"]::before,
+      table.tabla-filtrable td[data-label="Acción"]::before {
+        margin-bottom: 0.6rem;
+      }
+      table.tabla-filtrable td[data-label="Acciones"] > *,
+      table.tabla-filtrable td[data-label="Acción"] > * {
+        margin: 0.25rem;
+      }
+      table.tabla-filtrable td[data-label="Acciones"] button,
+      table.tabla-filtrable td[data-label="Acciones"] .btn,
+      table.tabla-filtrable td[data-label="Acción"] button,
+      table.tabla-filtrable td[data-label="Acción"] .btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+    }
+
+    /* ============================================================
+       RESPONSIVE — SMALL MOBILE
+       ============================================================ */
+    @media (max-width: 480px) {
+      .d-flex.justify-content-center.gap-3.mb-4 {
+        gap: 0.5rem !important;
+      }
+      .btn-outline-success,
+      .btn-outline-primary,
+      .btn-outline-warning {
+        flex: 1 1 calc(50% - 0.5rem);
+        font-size: 0.85rem;
+        padding: 0.5rem 0.6rem;
+      }
+      .buscador-global,
+      #botonAgregar {
+        max-width: 100%;
+      }
+      .modal-dialog {
+        margin: 0.75rem;
+      }
+      .modal-body {
+        padding: 1rem;
+      }
+      table.tabla-filtrable tr {
+        padding: 2.35rem 0.75rem 0.6rem;
+        border-radius: var(--radius-md);
+      }
+      table.tabla-filtrable td {
+        font-size: 0.92rem;
+      }
+    }
+
+    /* Reduced motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loader" class="loader hidden">
+  <img src="../imagenes/logo-usip.png" class="loader-img">
+  <p>Cargando...</p>
+</div>
+
+<!-- NAVBAR -->
+<div id="navbar"></div>
+<div class="container mt-4">
+
+  <!-- MENU DE SECCIONES -->
+  <div class="d-flex justify-content-center gap-3 mb-4">
+    <button class="btn btn-outline-success" onclick="mostrarSeccion('gestores')">Usuarios</button>
+    <button class="btn btn-outline-primary" onclick="mostrarSeccion('telefonos')">Teléfonos</button>
+    <button class="btn btn-outline-warning" onclick="mostrarSeccion('correos')">Correos</button>
+    <button class="btn btn-outline-warning" onclick="mostrarSeccion('diplomados')">Diplomados</button>
+
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <select id="filtroEstado" class="form-select">
+          <option value="">Todos</option>
+          <option value="DOC">Docente</option>
+          <option value="ADM">Administrativo</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- TITULO DINAMICO -->
+  <div class="text-center mb-4">
+    <h1 class="fw-bold" id="tituloSeccion">Usuarios</h1>
+    <p class="text-muted" id="descripcionSeccion">Administración de Usuarios</p>
+    <button id="botonAgregar" class="btn btn-success col-6" data-bs-toggle="modal" data-bs-target="#modalGeneral">
+      Agregar Usuario
+    </button>
+   <br>   
+  <!-- BUSCADOR -->
+   <br>
+<input 
+  type="text" 
+  class="form-control buscador-global mb-2"
+  placeholder="Buscar en tablas...">
+<br>
+  <!-- ================== SECCION GESTORES ================== -->
+  <div id="seccion-gestores">
+    <div class="table-responsive">
+      <table class="table tabla-filtrable table-hover table-striped shadow-sm tabla-filtrable"
+      >
+        <thead class="table-dark">
+          <tr>
+            <th>Id</th>
+            <th>Ci</th>
+            <th>Nombre Completo</th>
+            <th>Celular Personal</th>
+            <th>Celular Corporativo</th>
+            <th>Correo Corporativo</th>
+            <th>Diplomado</th>
+            <th>Tipo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla">
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================== SECCION TELEFONOS ================== -->
+  <div id="seccion-telefonos" style="display:none;">
+    <div class="table-responsive">
+      <table class="table tabla-filtrable table-hover table-striped shadow-sm tabla-filtrable">
+        <thead class="table-primary">
+          <tr>
+            <th>ID</th>
+            <th>Numero Corporativo</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tablaTelefonos">
+          <!-- Datos dinámicos -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================== SECCION CORREOS ================== -->
+  <div id="seccion-correos" style="display:none;">
+    <div class="table-responsive">
+      <table class="table tabla-filtrable table-hover table-striped shadow-sm tabla-filtrable">
+        <thead class="table-warning">
+          <tr>
+            <th>ID</th>
+            <th>Correo Corporativa</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tablaCorreos">
+          <!-- Datos dinámicos -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================== SECCION DIPLOMADOS ================== -->
+  <div id="seccion-diplomados" style="display:none;">
+    <div class="table-responsive">
+      <table class="table tabla-filtrable table-hover table-striped shadow-sm tabla-filtrable">
+        <thead class="table-warning">
+          <tr>
+            <th>ID</th>
+            <th>Diplomado</th>
+            <th>Carpeta de Videos</th>
+            <th>Classroom</th>
+            <th>Ficha Tecnica</th>
+            <th>Programa</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaDiplomados">
+          <!-- Datos dinámicos -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+
+
+</div>
+<!-- ================== MODAL GENERAL DINAMICO ================== -->
+<div class="modal fade" id="modalGeneral" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitulo">Agregar Usuario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formGeneral">
+          <!-- Aquí se inyectan los campos dinámicamente -->
+          <div id="modalCampos"></div>
+
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../accesorios/navbar.js"> </script>
+
+<script src="utilities/search.js"></script>
+
+<script src="utilities/modals.js"></script>
+<script src="models/Model.js"></script>
+<script src="controllers/Usuarios.js"></script>
+
+<script src="views/View.js"></script>
+<script src="views/renders.js"></script>
+<script src="views/ViewDiplomado.js"></script>
+
+<script src="controllers/Controller.js"></script>
+
+<script src="utilities/consultas.js"></script>
+<script src="utilities/secciones.js"></script>
+
+
+
+</body>
+</html>

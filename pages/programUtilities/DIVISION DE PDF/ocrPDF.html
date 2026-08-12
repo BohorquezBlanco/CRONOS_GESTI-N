@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>OCR Certificado PRO</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body {
+  font-family: Arial;
+  text-align: center;
+  background: #f5f5f5;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 10px;
+  border-radius: 6px;
+  background: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+#resultado {
+  margin-top: 20px;
+  font-size: 22px;
+  font-weight: bold;
+  color: green;
+}
+
+canvas {
+  margin-top: 15px;
+  border: 1px solid #ccc;
+  max-width: 90%;
+}
+</style>
+</head>
+
+<body>
+
+<h2>OCR Certificado (Detector de Nombre)</h2>
+
+<input type="file" id="fileInput" accept="application/pdf">
+<br>
+<label>Dividir cada:</label>
+<input type="number" id="bloqueInput" value="4" min="1" style="width:60px;">
+<span>páginas</span>
+<button onclick="procesar()">Procesar OCR</button>
+
+<div id="resultado">---</div>
+<canvas id="canvas"></canvas>
+
+<script>
+
+// ================= VARIABLES =================
+let pdfDoc = null;
+
+// ================= CARGAR PDF =================
+document.getElementById("fileInput").addEventListener("change", async function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const arrayBuffer = await file.arrayBuffer();
+  pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+
+  alert("PDF cargado ✅");
+});
+
+// ================= EXTRAER DATOS =================
+function extraerDatos(text){
+
+  let lineas = text.split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
+  console.log("LINEAS:", lineas);
+
+  let nombre = "NO DETECTADO";
+  let codigo = "NO DETECTADO";
+
+  // ===== NOMBRE =====
+  for(let i = 0; i < lineas.length; i++){
+
+    let linea = lineas[i].toLowerCase();
+
+    if(linea.includes("certifica que")){
+      let siguiente = lineas[i + 1];
+
+      if(siguiente){
+        siguiente = siguiente.replace(/[^A-ZÁÉÍÓÚÑ\s]/gi, "").trim();
+
+        if(siguiente.length > 5 && siguiente === siguiente.toUpperCase()){
+          nombre = siguiente;
+        }
+      }
+    }
+  }
+
+
+// ===== CODIGO =====
+for(let l of lineas){
+
+  let limpio = l
+    .replace(/[^A-Z0-9\-°\s]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // 🔥 buscar directamente el patrón DIP-
+  let match = limpio.match(/DIP-[A-Z0-9\-]+?\d{4}\s*N[°*]?\s*\d+/);
+
+  if(match){
+
+    let codigoBase = match[0];
+
+    // normalizar N*
+    codigoBase = codigoBase.replace("N*", "N°").replace("N ", "N° ");
+
+    // 🔥 agregar prefijo correcto
+    codigo = "CERT-" + codigoBase;
+
+    break;
+  }
+}
+
+  return { nombre, codigo };
+}
+
+// ================= PROCESAR TODO =================
+async function procesar(){
+
+  if(!pdfDoc){
+    alert("Sube un PDF primero");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+
+  let total = pdfDoc.numPages;
+let bloque = parseInt(document.getElementById("bloqueInput").value) || 1;
+  document.getElementById("resultado").innerText = "Procesando todo... ⏳";
+
+  for(let i = 1; i <= total; i += bloque){
+
+    // ===== OCR PRIMERA PAGINA =====
+    const page = await pdfDoc.getPage(i);
+    const viewport = page.getViewport({ scale: 2 });
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({
+      canvasContext: ctx,
+      viewport: viewport
+    }).promise;
+
+    const { data: { text } } = await Tesseract.recognize(canvas, 'spa');
+
+    console.log("OCR BLOQUE:", i, text);
+
+    let datos = extraerDatos(text);
+
+    let nombreArchivo = (datos.codigo + " - " + datos.nombre)
+      .replace(/[\\/:*?"<>|]/g, "")
+      .trim();
+
+    if(nombreArchivo === "-" || nombreArchivo.length < 5){
+      nombreArchivo = "certificado_" + i;
+    }
+
+    // ===== CREAR PDF =====
+    let pdfNuevo = new jsPDF();
+
+    for(let j = 0; j < bloque; j++){
+
+      if(i + j > total) break;
+
+      const p = await pdfDoc.getPage(i + j);
+      const vp = p.getViewport({ scale: 2 });
+
+      const c = document.createElement("canvas");
+      const cx = c.getContext("2d");
+
+      c.width = vp.width;
+      c.height = vp.height;
+
+      await p.render({
+        canvasContext: cx,
+        viewport: vp
+      }).promise;
+
+      let img = c.toDataURL("image/jpeg", 1.0);
+
+      if(j > 0) pdfNuevo.addPage();
+
+      pdfNuevo.addImage(
+        img,
+        'JPEG',
+        0,
+        0,
+        210,
+        297
+      );
+    }
+
+    // ===== DESCARGAR =====
+    pdfNuevo.save(nombreArchivo + ".pdf");
+
+    // pequeña pausa (evita bloqueo navegador)
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  document.getElementById("resultado").innerText = "✅ PROCESO COMPLETO";
+}
+</script>
+
+</body>
+</html>

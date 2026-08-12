@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Certificados Oficio 3 por Imagen</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <style>
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: #fff;
+      padding: 30px 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .modal-content button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    body {
+      font-family: Arial;
+      margin: 0;
+      padding: 0;
+    }
+
+    .pagina {
+      position: relative;
+  width: 33cm;
+  height: 21.6cm;
+      overflow: hidden;
+      display: block;
+      box-sizing: border-box;
+      margin: 0 auto;
+    }
+
+    .portada {
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .portada h1 {
+      font-size: 36px;
+    }
+
+    .pagina-cert {
+      background-image: url('tarjetasVersion1.jpg'); /* Cambia por tu imagen */
+      background-size: cover;
+      background-position: center;
+    }
+
+    .nombre {
+  position: absolute;
+
+  color: #0e3407;
+  width: 7cm;
+  height: 1.4cm;               /* altura fija */
+  overflow: hidden;            /* oculta exceso */
+  line-height: 1.2;
+  display: block;
+  font-size: 12px;
+  word-wrap: break-word;
+}
+
+
+
+    /* Posiciones para 3 nombres por página */
+    .nombre1 { top: 367px; left: 100px; }
+    .nombre2 { top: 410px; left: 100px; }
+    .nombre3 { top: 367.8px; left: 509px; }
+    .nombre4 { top: 410px; left: 509px; }
+    .nombre5 { top: 367px; left: 890px; }
+    .nombre6 { top: 410px; left: 890px; }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .solo-web,
+      .portada {
+        display: none !important;
+      }
+
+      .pagina {
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Página 1: Portada o instrucción -->
+  <div class="pagina portada">
+    <div class="solo-web" style="text-align: center; ">
+      <h2>Sube el archivo Excel:</h2>
+      <input type="file" id="excelFile" accept=".xlsx, .xls" />
+    </div>
+
+    <div>
+      <h1>Instrucciones</h1>
+      <p>Esta es la primera página, destinada a contener indicaciones generales, portada o mensaje de introducción.</p>
+      <p>Las páginas siguientes contienen las fotografias con fondo.</p>
+      <a href="DATOS.xlsx" download="PlantillaCertificados.xlsx">📥 Descargar Excel Para LLenar datos</a>
+    </div>
+      <div id="modoModal" class="modal">
+        <div class="modal-content">
+          <h2>¿Cómo quieres mostrar los datos?</h2>
+          <button id="btnFotos">📷 Mostrar como Fotografías</button>
+          <button id="btnTabla">📋 Mostrar como Tabla</button>
+        </div>
+    </div>
+  </div>
+
+  <!-- Contenedor para los certificados -->
+  <div id="output"></div>
+
+  <script>
+    let mostrarComoFotos = null;
+  
+    const modal = document.getElementById('modoModal');
+    const btnFotos = document.getElementById('btnFotos');
+    const btnTabla = document.getElementById('btnTabla');
+  
+    document.getElementById('excelFile').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+  
+      modal.style.display = 'flex'; // Mostrar modal
+  
+      const procesarArchivo = () => {
+        reader.onload = function (e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+  
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  
+          const output = document.getElementById('output');
+          output.innerHTML = '';
+  
+          if (mostrarComoFotos) {
+            // Modo CERTIFICADOS
+            for (let i = 0; i < rows.length; i += 6) {
+              if (!rows[i] || !rows[i].Nombre || rows[i].Nombre.trim() === '') break;
+  
+              const page = document.createElement('div');
+              page.className = 'pagina pagina-cert';
+  
+              for (let j = 0; j < 6; j++) {
+                const row = rows[i + j];
+                if (row && row.Nombre && row.Nombre.trim() !== '') {
+                  const fullName = row.Nombre;
+                  const boldLength = (j % 2 === 0) ? 7 : 9;
+                  const styledName = `<strong>${fullName.slice(0, boldLength)}</strong>${fullName.slice(boldLength)}`;
+  
+                  const nameDiv = document.createElement('div');
+                  nameDiv.className = `nombre nombre${j + 1}`;
+                  nameDiv.innerHTML = styledName;
+                  nameDiv.style.fontSize = '12px';
+  
+                  page.appendChild(nameDiv);
+  
+                  // Ajuste automático del texto
+                  requestAnimationFrame(() => {
+                    let fontSize = 12;
+                    while (nameDiv.scrollHeight > nameDiv.clientHeight && fontSize > 7) {
+                      fontSize -= 0.1;
+                      nameDiv.style.fontSize = fontSize + 'px';
+                    }
+                  });
+                }
+              }
+  
+              output.appendChild(page);
+            }
+          } else {
+            // Modo TABLA
+  
+            const table = document.createElement('table');
+            table.style.borderCollapse = 'collapse';
+            table.style.width = 'calc(100% - 4.5cm)';
+            table.style.marginLeft = '2.25cm';
+            table.style.marginRight = '2.25cm';
+  
+            const values = rows.map(row => row.Nombre || '').filter(val => val.trim() !== '');
+
+
+
+            function ajustarTextoUnaLinea(elemento, tamañoInicial) {
+
+                let tamaño = tamañoInicial;
+
+                elemento.style.fontSize = tamaño + "px";
+
+                // Ancho disponible dentro de la celda
+                const anchoDisponible = elemento.parentElement.clientWidth - 6;
+
+                while (tamaño > 7) {
+
+                    elemento.style.fontSize = tamaño + "px";
+
+                    // mide el ancho REAL del texto
+                    const anchoTexto = elemento.scrollWidth;
+
+                    if (anchoTexto <= anchoDisponible) {
+                        break;
+                    }
+
+                    tamaño--;
+                }
+            }
+
+
+  
+              function agregarContenido(td, nombre, programa) {
+
+                  const contenedor = document.createElement("div");
+                  contenedor.style.display = "flex";
+                  contenedor.style.flexDirection = "column";
+                  contenedor.style.justifyContent = "center";
+                  contenedor.style.alignItems = "center";
+                  contenedor.style.width = "100%";
+                  contenedor.style.height = "100%";
+                  contenedor.style.boxSizing = "border-box";
+                  contenedor.style.padding = "2px";
+
+                  // NOMBRE
+                  const nombreDiv = document.createElement("div");
+                  nombreDiv.textContent = nombre;
+                  nombreDiv.style.flex = "1";
+                  nombreDiv.style.display = "block";
+                  nombreDiv.style.alignItems = "center";
+                  nombreDiv.style.justifyContent = "center";
+                  nombreDiv.style.width = "100%";
+
+                  nombreDiv.style.textAlign = "center";
+                nombreDiv.style.lineHeight = "18px";
+
+                  nombreDiv.style.fontWeight = "bold";
+                  nombreDiv.style.fontSize = "18px";
+
+                  nombreDiv.style.whiteSpace = "nowrap";
+                  nombreDiv.style.overflow = "hidden";
+                  nombreDiv.style.textOverflow = "ellipsis";
+
+                  // PROGRAMA
+                  const programaDiv = document.createElement("div");
+                  programaDiv.textContent = programa;
+                  programaDiv.style.flex = "1";
+                  programaDiv.style.display = "flex";
+                  programaDiv.style.alignItems = "center";
+                  programaDiv.style.justifyContent = "center";
+                  programaDiv.style.width = "100%";
+
+                  programaDiv.style.color = "green";
+                  programaDiv.style.fontFamily = "cursive";
+                  programaDiv.style.fontSize = "15px";
+
+                  programaDiv.style.whiteSpace = "nowrap";
+                  programaDiv.style.overflow = "hidden";
+                  programaDiv.style.textOverflow = "ellipsis";
+
+                  contenedor.appendChild(nombreDiv);
+                  contenedor.appendChild(programaDiv);
+
+                  td.appendChild(contenedor);
+
+                  requestAnimationFrame(() => {
+                      ajustarTextoUnaLinea(nombreDiv, 18);
+                      ajustarTextoUnaLinea(programaDiv, 15);
+                  });
+              }
+
+ 
+
+            for (let i = 0; i < values.length; i += 8) {
+
+              const tr = document.createElement("tr");
+
+              for (let j = 0; j < 4; j++) {
+
+                  const td = document.createElement("td");
+
+                  td.style.border = "1px solid #ccc";
+                  td.style.width = "4cm";
+                  td.style.height = "1.4cm";
+                  td.style.padding = "0";
+                  td.style.overflow = "hidden";
+                  td.style.boxSizing = "border-box";
+                  td.style.textAlign = "center";
+                  td.style.verticalAlign = "middle";
+
+                  const indice = i + j * 2;
+
+                  if (values[indice]) {
+                      agregarContenido(
+                          td,
+                          values[indice],
+                          values[indice + 1] || ""
+                      );
+                  }
+
+                  tr.appendChild(td);
+              }
+
+              table.appendChild(tr);
+          }
+
+
+
+
+  
+            output.appendChild(table);
+          }
+        };
+  
+        reader.readAsArrayBuffer(file);
+      };
+  
+      btnFotos.onclick = () => {
+        mostrarComoFotos = true;
+        modal.style.display = 'none';
+        procesarArchivo();
+      };
+  
+      btnTabla.onclick = () => {
+        mostrarComoFotos = false;
+        modal.style.display = 'none';
+        procesarArchivo();
+      };
+    });
+  </script>
+  
+  
+  
+
+</body>
+</html>
