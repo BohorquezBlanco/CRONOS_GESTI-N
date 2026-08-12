@@ -16,7 +16,9 @@
     :root {
       --green: #2f5b2a;
       --green-dark: #234620;
+      --green-light: #eaf1e9;
       --gold: #b88616;
+      --gold-light: #fbf1de;
 
       --blue: #2563eb;
       --red: #dc2626;
@@ -137,9 +139,15 @@
       transition: .15s;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       transform: translateY(-1px);
       filter: brightness(.97);
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .btn-primary {
@@ -172,6 +180,17 @@
       color: #374151;
     }
 
+    .btn-outline {
+      background: white;
+      color: var(--green);
+      border: 1.5px solid var(--green);
+    }
+
+    .btn-lg {
+      padding: 12px 20px;
+      font-size: 14px;
+    }
+
 
     /* =========================================================
        TARJETAS
@@ -201,6 +220,9 @@
     .card-header h2 {
       margin: 0;
       font-size: 19px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .card-header small {
@@ -209,6 +231,20 @@
 
     .card-body {
       padding: 18px;
+    }
+
+    .badge-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: var(--green);
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
     }
 
 
@@ -260,6 +296,92 @@
 
 
     /* =========================================================
+       BUSCADOR
+       ========================================================= */
+
+    .search-box {
+      position: relative;
+      min-width: 220px;
+      flex: 1;
+      max-width: 320px;
+    }
+
+    .search-box input {
+      padding-left: 32px;
+    }
+
+    .search-box::before {
+      content: "🔎";
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      opacity: .6;
+      pointer-events: none;
+    }
+
+
+    /* =========================================================
+       PASOS / GUÍA RÁPIDA
+       ========================================================= */
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .step {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .step-num {
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      border-radius: 999px;
+      background: var(--green-light);
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .step-text b {
+      display: block;
+      font-size: 13px;
+    }
+
+    .step-text span {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .steps {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .steps {
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    /* =========================================================
        TABLA EDITABLE
        ========================================================= */
 
@@ -269,7 +391,7 @@
 
     table {
       width: 100%;
-      min-width: 1300px;
+      min-width: 1360px;
       border-collapse: collapse;
     }
 
@@ -282,6 +404,7 @@
 
       padding: 10px 8px;
       border-bottom: 1px solid var(--line);
+      white-space: nowrap;
     }
 
     td {
@@ -295,6 +418,26 @@
       min-width: 100px;
     }
 
+    tr.fila-seleccionada td {
+      background: var(--green-light);
+    }
+
+    tr.fila-seleccionada td:first-child {
+      box-shadow: inset 3px 0 0 var(--green);
+    }
+
+    .celda-select {
+      text-align: center;
+      width: 40px;
+    }
+
+    .celda-select input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
     .actions {
       display: flex;
       gap: 5px;
@@ -303,6 +446,10 @@
 
     .actions button {
       padding: 7px 9px;
+    }
+
+    tr.fila-oculta {
+      display: none;
     }
 
 
@@ -326,6 +473,133 @@
 
 
     /* =========================================================
+       BARRA DE SELECCIÓN / GENERACIÓN
+       ========================================================= */
+
+    .selection-bar {
+      margin-top: 16px;
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+
+      background: #fafbfc;
+    }
+
+    .selection-bar.has-selection {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+
+    .selection-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .selection-avatar {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border-radius: 999px;
+      background: var(--green);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .selection-text b {
+      display: block;
+      font-size: 14px;
+    }
+
+    .selection-text span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .generation-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    hr.divider {
+      border: 0;
+      border-top: 1px solid var(--line);
+      margin: 0;
+    }
+
+
+    /* =========================================================
+       PROGRESO DE GENERACIÓN MASIVA
+       ========================================================= */
+
+    .progress-panel {
+      display: none;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--gold);
+      background: var(--gold-light);
+      border-radius: 14px;
+    }
+
+    .progress-panel.active {
+      display: block;
+    }
+
+    .progress-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green-dark);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #efe3c6;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--gold);
+      border-radius: 999px;
+      transition: width .25s ease;
+    }
+
+    .progress-panel.done {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+
+    .progress-panel.done .progress-fill {
+      background: var(--green);
+    }
+
+    .progress-status {
+      margin-top: 8px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+
+    /* =========================================================
        PREVIEW
        ========================================================= */
 
@@ -334,7 +608,18 @@
       padding: 25px;
 
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .preview-tag {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--green);
+      background: var(--green-light);
+      padding: 6px 14px;
+      border-radius: 999px;
     }
 
     .preview {
@@ -501,7 +786,7 @@
     .modal-content {
       background: white;
       width: 100%;
-      max-width: 800px;
+      max-width: 480px;
       max-height: 90vh;
 
       border-radius: 18px;
@@ -525,8 +810,82 @@
       font-size: 18px;
     }
 
+    .modal-close {
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      padding: 4px 8px;
+    }
+
     .modal-body {
       padding: 20px;
+    }
+
+    .modal-body p {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    .modal-body ul {
+      margin: 10px 0;
+      padding-left: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .modal-footer {
+      padding: 14px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+
+    /* =========================================================
+       TOAST DE CONFIRMACIÓN
+       ========================================================= */
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      max-width: 320px;
+
+      background: var(--green-dark);
+      color: white;
+
+      padding: 14px 16px;
+      border-radius: 12px;
+
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.4;
+
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: .25s ease;
+
+      z-index: 1100;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .toast.error {
+      background: var(--red);
     }
 
 
@@ -566,6 +925,11 @@
         font-size: 22px;
       }
 
+      .search-box {
+        max-width: none;
+        width: 100%;
+      }
+
     }
 
 
@@ -598,6 +962,26 @@
 
       .action-bar button {
         width: 100%;
+      }
+
+      .selection-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .generation-group {
+        flex-direction: column;
+      }
+
+      .generation-group button {
+        width: 100%;
+      }
+
+      .toast {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        bottom: 12px;
       }
 
     }
@@ -695,6 +1079,47 @@
       </div>
 
     </header>
+
+
+    <!-- =====================================================
+         GUÍA RÁPIDA
+         ===================================================== -->
+
+    <div class="steps no-print">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <b>Revisa la lista</b>
+          <span id="stepListaTexto">0 defensas cargadas</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <b>Selecciona</b>
+          <span>Un estudiante o todos</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <b>Genera</b>
+          <span>Individual o en lote</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <b>Descarga</b>
+          <span>Archivo(s) HTML listos</span>
+        </div>
+      </div>
+
+    </div>
 
 
     <!-- =====================================================
@@ -796,16 +1221,25 @@
 
           <h2>
             📋 Defensas programadas
+            <span class="badge-count" id="badgeTotal">0</span>
           </h2>
 
           <small>
-            Puedes modificar directamente cualquier dato.
+            Puedes modificar directamente cualquier dato. Elige el círculo de una fila para seleccionar a ese estudiante.
           </small>
 
         </div>
 
 
         <div class="action-bar">
+
+          <div class="search-box">
+            <input
+              id="buscador"
+              type="text"
+              placeholder="Buscar estudiante o carrera..."
+              oninput="filtrarTabla(this.value)">
+          </div>
 
           <button
             class="btn-primary"
@@ -826,6 +1260,7 @@
 
             <tr>
 
+              <th title="Seleccionar para generar de forma individual">Sel.</th>
               <th>Fecha</th>
               <th>Hora</th>
               <th>Estudiante</th>
@@ -862,12 +1297,6 @@
           </button>
 
           <button
-            class="btn-blue"
-            onclick="generarHTMLSeleccionado()">
-            📄 Generar HTML
-          </button>
-
-          <button
             class="btn-primary"
             onclick="window.print()">
             🖨️ Imprimir / PDF
@@ -878,6 +1307,67 @@
             id="contador">
             0 defensas
           </span>
+
+        </div>
+
+
+        <!-- =================================================
+             BARRA DE SELECCIÓN Y GENERACIÓN
+             ================================================= -->
+
+        <div class="selection-bar" id="barraSeleccion">
+
+          <div class="selection-info">
+
+            <div class="selection-avatar" id="avatarSeleccion">–</div>
+
+            <div class="selection-text">
+              <b id="nombreSeleccionado">Ningún estudiante seleccionado</b>
+              <span id="detalleSeleccionado">Selecciona una fila en la tabla para generar su aviso individual.</span>
+            </div>
+
+          </div>
+
+          <div class="generation-group">
+
+            <button
+              class="btn-blue btn-lg"
+              id="btnGenerarIndividual"
+              onclick="generarHTMLSeleccionado()"
+              disabled>
+              📄 Generar aviso individual
+            </button>
+
+            <button
+              class="btn-gold btn-lg"
+              id="btnGenerarTodos"
+              onclick="abrirModalGenerarTodos()">
+              📦 Generar todos los avisos
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- =================================================
+             PANEL DE PROGRESO (GENERACIÓN MASIVA)
+             ================================================= -->
+
+        <div class="progress-panel" id="panelProgreso">
+
+          <div class="progress-panel-header">
+            <span id="progresoTitulo">Generando avisos…</span>
+            <span id="progresoContador">0 / 0</span>
+          </div>
+
+          <div class="progress-track">
+            <div class="progress-fill" id="progresoBarra"></div>
+          </div>
+
+          <div class="progress-status" id="progresoEstado">
+            Preparando la generación…
+          </div>
 
         </div>
 
@@ -911,6 +1401,7 @@
 
       <div class="preview-container">
 
+        <span class="preview-tag no-print" id="previewTag">Sin selección</span>
 
         <div
           class="preview"
@@ -1174,6 +1665,51 @@
 
 
   <!-- =======================================================
+       MODAL: CONFIRMAR GENERAR TODOS
+       ======================================================= -->
+
+  <div class="modal no-print" id="modalTodos">
+
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h2>📦 Generar todos los avisos</h2>
+        <button class="modal-close" onclick="cerrarModalGenerarTodos()">✕</button>
+      </div>
+
+      <div class="modal-body">
+
+        <p>
+          Estás a punto de generar y descargar el aviso HTML de
+          <b id="modalCantidad">0 defensas</b>. Cada estudiante recibirá un archivo individual.
+        </p>
+
+        <ul>
+          <li>Los archivos ya generados no se eliminan ni se sobrescriben entre sí.</li>
+          <li>Las filas sin nombre de estudiante se omitirán automáticamente.</li>
+          <li>El proceso puede tardar unos segundos según la cantidad de defensas.</li>
+        </ul>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-gray" onclick="cerrarModalGenerarTodos()">Cancelar</button>
+        <button class="btn-gold" onclick="confirmarGenerarTodos()">Sí, generar todos</button>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =======================================================
+       TOAST
+       ======================================================= -->
+
+  <div class="toast no-print" id="toast"></div>
+
+
+  <!-- =======================================================
        JAVASCRIPT
        ======================================================= -->
 
@@ -1321,6 +1857,31 @@
 
 
     /* =======================================================
+       TOAST (MENSAJES DE CONFIRMACIÓN)
+       ======================================================= */
+
+    let toastTimeout = null;
+
+    function mostrarToast(mensaje, tipo) {
+
+      const toast = document.getElementById("toast");
+
+      toast.textContent = mensaje;
+
+      toast.classList.toggle("error", tipo === "error");
+
+      toast.classList.add("show");
+
+      clearTimeout(toastTimeout);
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 4000);
+
+    }
+
+
+    /* =======================================================
        RENDERIZAR TABLA
        ======================================================= */
 
@@ -1336,8 +1897,24 @@
 
         const tr = document.createElement("tr");
 
+        tr.dataset.index = index;
+
+        if (index === defensaSeleccionada) {
+          tr.classList.add("fila-seleccionada");
+        }
+
 
         tr.innerHTML = `
+
+          <td class="celda-select">
+            <input
+              type="radio"
+              name="seleccionDefensa"
+              ${index === defensaSeleccionada ? "checked" : ""}
+              onchange="seleccionarDefensa(${index})"
+              title="Seleccionar para generar de forma individual">
+          </td>
+
 
           <td>
             <input
@@ -1438,19 +2015,22 @@
 
               <button
                 class="btn-gold"
-                onclick="seleccionarDefensa(${index})">
+                onclick="seleccionarDefensa(${index}); actualizarPreview();"
+                title="Vista previa">
                 👁
               </button>
 
               <button
                 class="btn-blue"
-                onclick="descargarHTML(${index})">
+                onclick="descargarHTML(${index})"
+                title="Generar aviso de este estudiante">
                 📄
               </button>
 
               <button
                 class="btn-red"
-                onclick="eliminarDefensa(${index})">
+                onclick="eliminarDefensa(${index})"
+                title="Eliminar">
                 🗑
               </button>
 
@@ -1468,6 +2048,21 @@
 
       document.getElementById("contador").textContent =
         `${defensas.length} defensa${defensas.length === 1 ? "" : "s"}`;
+
+      document.getElementById("badgeTotal").textContent =
+        defensas.length;
+
+      document.getElementById("stepListaTexto").textContent =
+        `${defensas.length} defensa${defensas.length === 1 ? "" : "s"} cargada${defensas.length === 1 ? "" : "s"}`;
+
+      // Reaplicar el filtro de búsqueda activo, si lo hay
+      const buscador = document.getElementById("buscador");
+
+      if (buscador && buscador.value.trim() !== "") {
+        filtrarTabla(buscador.value);
+      }
+
+      actualizarResumenSeleccion();
 
     }
 
@@ -1503,6 +2098,57 @@
 
 
     /* =======================================================
+       BUSCADOR
+       ======================================================= */
+
+    function filtrarTabla(valor) {
+
+      const termino = valor.trim().toLowerCase();
+
+      const filas =
+        document.querySelectorAll("#tablaDefensas tr");
+
+      let visibles = 0;
+
+      filas.forEach((fila) => {
+
+        const index = Number(fila.dataset.index);
+
+        const d = defensas[index];
+
+        if (!d) return;
+
+        const texto =
+          `${d.estudiante} ${d.carrera}`.toLowerCase();
+
+        const coincide =
+          termino === "" || texto.includes(termino);
+
+        fila.classList.toggle("fila-oculta", !coincide);
+
+        if (coincide) visibles++;
+
+      });
+
+      const contador =
+        document.getElementById("contador");
+
+      if (termino === "") {
+
+        contador.textContent =
+          `${defensas.length} defensa${defensas.length === 1 ? "" : "s"}`;
+
+      } else {
+
+        contador.textContent =
+          `${visibles} de ${defensas.length} defensas`;
+
+      }
+
+    }
+
+
+    /* =======================================================
        ACTUALIZAR DATO
        ======================================================= */
 
@@ -1515,7 +2161,10 @@
         JSON.stringify(defensas)
       );
 
-      actualizarPreview();
+      if (index === defensaSeleccionada) {
+        actualizarPreview();
+        actualizarResumenSeleccion();
+      }
 
     }
 
@@ -1567,7 +2216,11 @@
 
       defensas.splice(index, 1);
 
-      guardarDatos();
+      if (defensaSeleccionada >= defensas.length) {
+        defensaSeleccionada = defensas.length ? defensas.length - 1 : -1;
+      }
+
+      guardarDatosSilencioso();
 
       renderTabla();
 
@@ -1580,12 +2233,30 @@
        SELECCIONAR DEFENSA
        ======================================================= */
 
-    let defensaSeleccionada = 0;
+    let defensaSeleccionada = defensas.length ? 0 : -1;
 
 
     function seleccionarDefensa(index) {
 
       defensaSeleccionada = index;
+
+      // Actualiza el resaltado de filas sin volver a construir toda la tabla
+      document
+        .querySelectorAll("#tablaDefensas tr")
+        .forEach((fila) => {
+
+          const esSeleccionada =
+            Number(fila.dataset.index) === index;
+
+          fila.classList.toggle("fila-seleccionada", esSeleccionada);
+
+          const radio = fila.querySelector('input[type="radio"]');
+
+          if (radio) radio.checked = esSeleccionada;
+
+        });
+
+      actualizarResumenSeleccion();
 
       actualizarPreview();
 
@@ -1600,23 +2271,85 @@
 
 
     /* =======================================================
+       RESUMEN DE SELECCIÓN (BARRA SUPERIOR A LA TABLA)
+       ======================================================= */
+
+    function actualizarResumenSeleccion() {
+
+      const barra = document.getElementById("barraSeleccion");
+
+      const nombreEl = document.getElementById("nombreSeleccionado");
+
+      const detalleEl = document.getElementById("detalleSeleccionado");
+
+      const avatarEl = document.getElementById("avatarSeleccion");
+
+      const btnIndividual = document.getElementById("btnGenerarIndividual");
+
+
+      if (
+        defensaSeleccionada < 0 ||
+        !defensas[defensaSeleccionada]
+      ) {
+
+        barra.classList.remove("has-selection");
+
+        nombreEl.textContent = "Ningún estudiante seleccionado";
+
+        detalleEl.textContent =
+          "Selecciona una fila en la tabla para generar su aviso individual.";
+
+        avatarEl.textContent = "–";
+
+        btnIndividual.disabled = true;
+
+        return;
+
+      }
+
+      const d = defensas[defensaSeleccionada];
+
+      barra.classList.add("has-selection");
+
+      nombreEl.textContent =
+        d.estudiante || "Estudiante sin nombre";
+
+      detalleEl.textContent =
+        `${d.carrera || "Carrera no definida"} · ${d.modalidad || "Modalidad no definida"}`;
+
+      avatarEl.textContent =
+        (d.estudiante || "?").trim().charAt(0).toUpperCase() || "?";
+
+      btnIndividual.disabled = false;
+
+    }
+
+
+    /* =======================================================
        ACTUALIZAR PREVIEW
        ======================================================= */
 
     function actualizarPreview() {
 
-      if (!defensas.length) {
-        return;
-      }
+      const previewTag =
+        document.getElementById("previewTag");
 
       if (
-        defensaSeleccionada >= defensas.length
+        !defensas.length ||
+        defensaSeleccionada < 0 ||
+        !defensas[defensaSeleccionada]
       ) {
-        defensaSeleccionada = 0;
+
+        previewTag.textContent = "Sin selección";
+
+        return;
       }
 
       const d =
         defensas[defensaSeleccionada];
+
+      previewTag.textContent =
+        `Vista previa de: ${d.estudiante || "estudiante sin nombre"}`;
 
 
       document.getElementById(
@@ -1685,7 +2418,7 @@
        GUARDAR DATOS
        ======================================================= */
 
-    function guardarDatos() {
+    function guardarDatosSilencioso() {
 
       const datos = {
 
@@ -1711,10 +2444,14 @@
         JSON.stringify(datos)
       );
 
+    }
 
-      alert(
-        "Los datos fueron guardados correctamente."
-      );
+
+    function guardarDatos() {
+
+      guardarDatosSilencioso();
+
+      mostrarToast("✅ Los datos fueron guardados correctamente.");
 
     }
 
@@ -1733,9 +2470,7 @@
 
       if (!guardado) {
 
-        alert(
-          "No existen datos guardados."
-        );
+        mostrarToast("No existen datos guardados.", "error");
 
         return;
       }
@@ -1774,21 +2509,20 @@
         defensas =
           datos.defensas || [];
 
+        defensaSeleccionada =
+          defensas.length ? 0 : -1;
+
 
         renderTabla();
 
         actualizarPreview();
 
 
-        alert(
-          "Datos recuperados correctamente."
-        );
+        mostrarToast("✅ Datos recuperados correctamente.");
 
       } catch (error) {
 
-        alert(
-          "No se pudieron recuperar los datos."
-        );
+        mostrarToast("No se pudieron recuperar los datos.", "error");
 
       }
 
@@ -1812,6 +2546,8 @@
 
       defensas = [];
 
+      defensaSeleccionada = -1;
+
       localStorage.removeItem(
         "usip_generador"
       );
@@ -1823,20 +2559,29 @@
       ).textContent =
         "Seleccione un estudiante";
 
+      document.getElementById("previewTag").textContent =
+        "Sin selección";
+
     }
 
 
     /* =======================================================
-       GENERAR HTML
+       GENERAR HTML INDIVIDUAL (ESTUDIANTE SELECCIONADO)
        ======================================================= */
 
     function generarHTMLSeleccionado() {
 
       if (!defensas.length) {
 
-        alert(
-          "No existen defensas."
-        );
+        mostrarToast("No existen defensas.", "error");
+
+        return;
+
+      }
+
+      if (defensaSeleccionada < 0 || !defensas[defensaSeleccionada]) {
+
+        mostrarToast("Primero selecciona un estudiante en la tabla.", "error");
 
         return;
 
@@ -1845,6 +2590,10 @@
 
       descargarHTML(
         defensaSeleccionada
+      );
+
+      mostrarToast(
+        `✅ Aviso generado para ${defensas[defensaSeleccionada].estudiante}.`
       );
 
     }
@@ -2473,7 +3222,7 @@ ${escapeHTML(periodo)}
 
 
     /* =======================================================
-       DESCARGAR HTML
+       DESCARGAR HTML (GENERACIÓN INDIVIDUAL - LÓGICA ORIGINAL)
        ======================================================= */
 
     function descargarHTML(index) {
@@ -2536,6 +3285,135 @@ ${escapeHTML(periodo)}
       a.remove();
 
       URL.revokeObjectURL(url);
+
+    }
+
+
+    /* =======================================================
+       GENERACIÓN MASIVA: "GENERAR TODOS LOS AVISOS"
+       ======================================================= */
+
+    function abrirModalGenerarTodos() {
+
+      if (!defensas.length) {
+
+        mostrarToast("No hay defensas registradas todavía.", "error");
+
+        return;
+
+      }
+
+      document.getElementById("modalCantidad").textContent =
+        `${defensas.length} defensa${defensas.length === 1 ? "" : "s"}`;
+
+      document.getElementById("modalTodos").classList.add("active");
+
+    }
+
+
+    function cerrarModalGenerarTodos() {
+
+      document.getElementById("modalTodos").classList.remove("active");
+
+    }
+
+
+    function esperar(ms) {
+
+      return new Promise((resolve) => setTimeout(resolve, ms));
+
+    }
+
+
+    async function confirmarGenerarTodos() {
+
+      cerrarModalGenerarTodos();
+
+      const btnTodos = document.getElementById("btnGenerarTodos");
+
+      const btnIndividual = document.getElementById("btnGenerarIndividual");
+
+      const panel = document.getElementById("panelProgreso");
+
+      const barra = document.getElementById("progresoBarra");
+
+      const contadorTxt = document.getElementById("progresoContador");
+
+      const estadoTxt = document.getElementById("progresoEstado");
+
+      const tituloTxt = document.getElementById("progresoTitulo");
+
+
+      const total = defensas.length;
+
+      let generados = 0;
+
+      let omitidos = 0;
+
+
+      btnTodos.disabled = true;
+
+      btnIndividual.disabled = true;
+
+      panel.classList.remove("done");
+
+      panel.classList.add("active");
+
+      tituloTxt.textContent = "Generando avisos…";
+
+      barra.style.width = "0%";
+
+
+      for (let i = 0; i < total; i++) {
+
+        const d = defensas[i];
+
+        contadorTxt.textContent = `${i + 1} / ${total}`;
+
+        barra.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
+
+
+        if (!d.estudiante || !d.estudiante.trim()) {
+
+          omitidos++;
+
+          estadoTxt.textContent =
+            `Omitiendo defensa ${i + 1} de ${total} (sin nombre de estudiante)…`;
+
+        } else {
+
+          estadoTxt.textContent =
+            `Generando aviso ${i + 1} de ${total}: ${d.estudiante}…`;
+
+          descargarHTML(i);
+
+          generados++;
+
+        }
+
+        // Pequeña pausa entre descargas para que el navegador
+        // no bloquee las descargas múltiples y la interfaz se sienta fluida.
+        await esperar(300);
+
+      }
+
+
+      panel.classList.add("done");
+
+      tituloTxt.textContent = "✅ Proceso finalizado";
+
+      estadoTxt.textContent =
+        omitidos > 0
+          ? `Se generaron ${generados} de ${total} avisos. ${omitidos} se omitieron por falta de nombre de estudiante.`
+          : `Se generaron los ${generados} avisos correctamente.`;
+
+      btnTodos.disabled = false;
+
+      btnIndividual.disabled = defensaSeleccionada < 0;
+
+      mostrarToast(
+        `✅ Generación de todos los avisos finalizada (${generados}/${total}).`
+      );
 
     }
 
@@ -2607,6 +3485,7 @@ ${escapeHTML(periodo)}
 
       }
 
+      defensaSeleccionada = defensas.length ? 0 : -1;
 
       renderTabla();
 
