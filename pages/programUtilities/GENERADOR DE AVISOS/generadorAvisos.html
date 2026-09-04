@@ -172,6 +172,11 @@
       color: #374151;
     }
 
+    .btn-purple {
+      background: #6d28d9;
+      color: white;
+    }
+
 
     /* =========================================================
        TARJETAS
@@ -871,6 +876,18 @@
             class="btn-primary"
             onclick="window.print()">
             🖨️ Imprimir / PDF
+          </button>
+
+          <button
+            class="btn-purple"
+            onclick="descargarHTMLGeneral()">
+            📋 Generar HTML General
+          </button>
+
+          <button
+            class="btn-light"
+            onclick="generarTodosLosAvisos()">
+            📄 Generar todos los avisos individuales
           </button>
 
           <span
@@ -2540,6 +2557,742 @@ ${escapeHTML(periodo)}
       a.remove();
 
       URL.revokeObjectURL(url);
+
+    }
+
+
+    /* =======================================================
+       AGRUPAR DEFENSAS POR FECHA (para el HTML General)
+       No crea una fuente de datos nueva: solo lee "defensas".
+       ======================================================= */
+
+    function agruparPorFecha(lista) {
+
+      const grupos = {};
+
+      lista.forEach((d) => {
+
+        const clave = d.fecha || "";
+
+        if (!grupos[clave]) {
+          grupos[clave] = [];
+        }
+
+        grupos[clave].push(d);
+
+      });
+
+
+      // Ordenar cada grupo por hora ascendente
+      Object.keys(grupos).forEach((clave) => {
+
+        grupos[clave].sort((a, b) => {
+
+          const ha = a.hora || "";
+          const hb = b.hora || "";
+
+          return ha.localeCompare(hb);
+
+        });
+
+      });
+
+
+      // Ordenar las fechas de forma ascendente
+      // (las defensas sin fecha quedan al final)
+      const claves = Object.keys(grupos).sort((a, b) => {
+
+        if (a === "" && b === "") return 0;
+        if (a === "") return 1;
+        if (b === "") return -1;
+
+        return a.localeCompare(b);
+
+      });
+
+
+      return claves.map((clave) => ({
+        fecha: clave,
+        items: grupos[clave]
+      }));
+
+    }
+
+
+    /* =======================================================
+       CREAR DOCUMENTO HTML GENERAL (CRONOGRAMA COMPLETO)
+       Toma directamente el array "defensas" tal como está.
+       ======================================================= */
+
+    function crearHTMLGeneral() {
+
+      const universidad =
+        document.getElementById("universidad").value ||
+        "Universidad Simón I. Patiño";
+
+      const area =
+        document.getElementById("area").value ||
+        "Área de Titulación · Dirección Académica";
+
+      const periodo =
+        document.getElementById("periodo").value || "";
+
+
+      const grupos = agruparPorFecha(defensas);
+
+      const totalDefensas = defensas.length;
+      const totalFechas = grupos.length;
+
+
+      const navHTML = grupos
+        .map((g) => {
+
+          const idAncla =
+            "fecha-" + (g.fecha || "sin-fecha");
+
+          const etiqueta = g.fecha
+            ? fechaBonita(g.fecha).replace(/^\w+\s/, "")
+            : "Sin fecha";
+
+          return `<a href="#${idAncla}" class="nav-link">${escapeHTML(etiqueta)}</a>`;
+
+        })
+        .join("");
+
+
+      const cuerpoHTML = grupos
+        .map((g) => {
+
+          const idAncla =
+            "fecha-" + (g.fecha || "sin-fecha");
+
+          const etiquetaFecha = g.fecha
+            ? fechaBonita(g.fecha)
+            : "Fecha por definir";
+
+
+          const tarjetas = g.items
+            .map((d) => {
+
+              const estudiante =
+                d.estudiante && d.estudiante.trim()
+                  ? d.estudiante
+                  : "Estudiante pendiente";
+
+              return `
+                <article class="defensa-card">
+
+                  <div class="defensa-hora">
+                    ${escapeHTML(d.hora || "Hora por definir")}
+                  </div>
+
+                  <h3 class="defensa-estudiante">
+                    ${escapeHTML(estudiante)}
+                  </h3>
+
+                  <div class="defensa-info">
+
+                    <div class="info-linea">
+                      <span class="info-tag">Carrera:</span>
+                      <span>${escapeHTML(d.carrera || "—")}</span>
+                    </div>
+
+                    <div class="info-linea">
+                      <span class="info-tag">Modalidad:</span>
+                      <span>${escapeHTML(d.modalidad || "—")}</span>
+                    </div>
+
+                    <div class="info-linea">
+                      <span class="info-tag">Lugar:</span>
+                      <span>${escapeHTML(d.aula || "—")}</span>
+                    </div>
+
+                  </div>
+
+                  <div class="tribunal-title">
+                    TRIBUNAL EVALUADOR
+                  </div>
+
+                  <div class="tribunal-grid">
+
+                    <div class="tribunal-item">
+                      <div class="jury-label">Presidente</div>
+                      <div class="jury-name">${escapeHTML(d.presidente || "—")}</div>
+                    </div>
+
+                    <div class="tribunal-item">
+                      <div class="jury-label">Examinador I</div>
+                      <div class="jury-name">${escapeHTML(d.exam1 || "—")}</div>
+                    </div>
+
+                    <div class="tribunal-item">
+                      <div class="jury-label">Examinador II</div>
+                      <div class="jury-name">${escapeHTML(d.exam2 || "—")}</div>
+                    </div>
+
+                    <div class="tribunal-item">
+                      <div class="jury-label">Tutor</div>
+                      <div class="jury-name">${escapeHTML(d.tutor || "—")}</div>
+                    </div>
+
+                  </div>
+
+                </article>
+              `;
+
+            })
+            .join("");
+
+
+          return `
+            <section class="fecha-section" id="${idAncla}">
+
+              <div class="fecha-header">
+                ${escapeHTML(etiquetaFecha.toUpperCase())}
+              </div>
+
+              <div class="defensas-list">
+                ${tarjetas}
+              </div>
+
+            </section>
+          `;
+
+        })
+        .join("");
+
+
+      const contenidoHTML = defensas.length
+        ? cuerpoHTML
+        : `<div class="empty-state">No existen defensas programadas.</div>`;
+
+
+      return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cronograma de Defensas - USIP</title>
+<style>
+
+:root{
+  --green:#2f5b2a;
+  --gold:#b88616;
+  --ink:#1a1d29;
+  --muted:#5b6170;
+  --bg:#f3f5f9;
+  --line:#e5e7eb;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+}
+
+.page{
+  max-width:820px;
+  margin:0 auto;
+  padding:18px;
+}
+
+.header{
+  background:white;
+  text-align:center;
+  padding:30px 20px;
+  border-radius:18px;
+  border-bottom:4px solid var(--gold);
+  box-shadow:0 8px 25px rgba(0,0,0,.06);
+  margin-bottom:18px;
+}
+
+.logo{
+  font-family:"Times New Roman",serif;
+  font-size:44px;
+  font-weight:bold;
+  letter-spacing:6px;
+}
+
+.logo .u, .logo .i{
+  color:var(--gold);
+}
+
+.logo .s, .logo .p{
+  color:var(--green);
+}
+
+.university{
+  margin-top:4px;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--green);
+  font-weight:700;
+}
+
+.area-inst{
+  margin-top:2px;
+  font-size:11px;
+  color:var(--muted);
+}
+
+.title{
+  margin-top:22px;
+  font-size:26px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+
+.subtitle{
+  margin-top:4px;
+  font-size:14px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.periodo{
+  display:inline-block;
+  margin-top:12px;
+  padding:6px 16px;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  color:var(--green);
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.summary-item{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  text-align:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+}
+
+.summary-num{
+  display:block;
+  font-size:26px;
+  font-weight:800;
+  color:var(--green);
+}
+
+.summary-label{
+  display:block;
+  margin-top:2px;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--muted);
+  font-weight:700;
+}
+
+.quick-nav{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  background:white;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:18px;
+}
+
+.nav-link{
+  background:#f3f5f9;
+  color:var(--green);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 13px;
+  font-size:12px;
+  font-weight:700;
+  text-decoration:none;
+  white-space:nowrap;
+}
+
+.print-btn{
+  display:block;
+  width:100%;
+  margin-bottom:18px;
+  padding:12px;
+  border:0;
+  border-radius:12px;
+  background:var(--green);
+  color:white;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.print-btn:hover{
+  filter:brightness(.95);
+}
+
+.fecha-section{
+  margin-bottom:24px;
+}
+
+.fecha-header{
+  background:var(--green);
+  color:white;
+  font-weight:800;
+  font-size:14px;
+  letter-spacing:.03em;
+  padding:12px 16px;
+  border-radius:12px;
+  margin-bottom:12px;
+  box-shadow:0 4px 14px rgba(47,91,42,.25);
+}
+
+.defensas-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.defensa-card{
+  background:white;
+  border:1px solid var(--line);
+  border-left:5px solid var(--gold);
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+}
+
+.defensa-hora{
+  display:inline-block;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  color:var(--green);
+  font-weight:800;
+  font-size:13px;
+  padding:4px 12px;
+  border-radius:999px;
+  margin-bottom:8px;
+}
+
+.defensa-estudiante{
+  margin:0 0 10px;
+  font-size:19px;
+  font-weight:800;
+  color:var(--ink);
+}
+
+.defensa-info{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin-bottom:14px;
+  font-size:13px;
+}
+
+.info-linea{
+  display:flex;
+  gap:6px;
+}
+
+.info-tag{
+  font-weight:700;
+  color:var(--muted);
+}
+
+.tribunal-title{
+  font-size:12px;
+  font-weight:800;
+  color:var(--green);
+  border-bottom:2px solid var(--gold);
+  padding-bottom:5px;
+  margin-bottom:10px;
+  letter-spacing:.03em;
+}
+
+.tribunal-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.tribunal-item{
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:8px 10px;
+}
+
+.jury-label{
+  font-size:10px;
+  text-transform:uppercase;
+  font-weight:800;
+  color:var(--muted);
+}
+
+.jury-name{
+  margin-top:2px;
+  font-size:13px;
+  font-weight:700;
+  color:var(--ink);
+}
+
+.empty-state{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:40px 20px;
+  text-align:center;
+  color:var(--muted);
+  font-weight:700;
+}
+
+.footer{
+  text-align:center;
+  padding:18px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+@media(max-width:520px){
+
+  .page{
+    padding:10px;
+  }
+
+  .header{
+    padding:22px 14px;
+  }
+
+  .logo{
+    font-size:34px;
+  }
+
+  .title{
+    font-size:21px;
+  }
+
+  .tribunal-grid{
+    grid-template-columns:1fr;
+  }
+
+  .summary{
+    grid-template-columns:1fr 1fr;
+  }
+
+}
+
+@media print{
+
+  body{
+    background:white;
+  }
+
+  .no-print{
+    display:none !important;
+  }
+
+  .page{
+    padding:0;
+    max-width:100%;
+  }
+
+  .header, .summary-item, .defensa-card, .quick-nav{
+    box-shadow:none;
+  }
+
+  .fecha-section{
+    break-inside:avoid;
+  }
+
+  .defensa-card{
+    break-inside:avoid;
+  }
+
+}
+
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="header">
+
+    <div class="logo">
+      <span class="u">U</span><span class="s">S</span><span class="i">I</span><span class="p">P</span>
+    </div>
+
+    <div class="university">
+      ${escapeHTML(universidad)}
+    </div>
+
+    <div class="area-inst">
+      ${escapeHTML(area)}
+    </div>
+
+    <div class="title">
+      CRONOGRAMA DE DEFENSAS
+    </div>
+
+    <div class="subtitle">
+      Defensas Públicas
+    </div>
+
+    ${periodo ? `<div class="periodo">${escapeHTML(periodo)}</div>` : ""}
+
+  </header>
+
+  <div class="summary no-print">
+
+    <div class="summary-item">
+      <span class="summary-num">${totalDefensas}</span>
+      <span class="summary-label">Total de defensas</span>
+    </div>
+
+    <div class="summary-item">
+      <span class="summary-num">${totalFechas}</span>
+      <span class="summary-label">Fechas programadas</span>
+    </div>
+
+  </div>
+
+  ${grupos.length > 1 ? `<nav class="quick-nav no-print">${navHTML}</nav>` : ""}
+
+  <button class="print-btn no-print" onclick="window.print()">
+    🖨️ Imprimir / PDF
+  </button>
+
+  <main>
+    ${contenidoHTML}
+  </main>
+
+  <footer class="footer">
+    ${escapeHTML(area)}<br>
+    ${escapeHTML(periodo)}
+  </footer>
+
+</div>
+
+</body>
+</html>`;
+
+    }
+
+
+    /* =======================================================
+       DESCARGAR HTML GENERAL (un único archivo)
+       ======================================================= */
+
+    function descargarHTMLGeneral() {
+
+      if (!defensas.length) {
+
+        alert(
+          "No existen defensas programadas."
+        );
+
+        return;
+
+      }
+
+
+      const html =
+        crearHTMLGeneral();
+
+
+      const blob =
+        new Blob(
+          [html],
+          {
+            type:
+              "text/html;charset=utf-8"
+          }
+        );
+
+
+      const url =
+        URL.createObjectURL(blob);
+
+
+      const a =
+        document.createElement("a");
+
+
+      a.href = url;
+
+      a.download =
+        "Cronograma-Defensas-USIP.html";
+
+
+      document.body.appendChild(a);
+
+      a.click();
+
+      a.remove();
+
+      URL.revokeObjectURL(url);
+
+    }
+
+
+    /* =======================================================
+       GENERAR TODOS LOS AVISOS INDIVIDUALES
+       (usa la misma función crearHTMLAviso/descargarHTML,
+       sin duplicar lógica ni datos)
+       ======================================================= */
+
+    function generarTodosLosAvisos() {
+
+      if (!defensas.length) {
+
+        alert(
+          "No existen defensas."
+        );
+
+        return;
+
+      }
+
+
+      const indicesValidos = [];
+
+      defensas.forEach((d, i) => {
+
+        if (d.estudiante && d.estudiante.trim()) {
+          indicesValidos.push(i);
+        }
+
+      });
+
+
+      if (!indicesValidos.length) {
+
+        alert(
+          "Ninguna defensa tiene un estudiante asignado."
+        );
+
+        return;
+
+      }
+
+
+      indicesValidos.forEach((indice, orden) => {
+
+        setTimeout(() => {
+          descargarHTML(indice);
+        }, orden * 300);
+
+      });
 
     }
 
