@@ -3,7 +3,6 @@
 /* =========================================================
    HELPERS REUTILIZABLES
    ========================================================= */
- 
 /**
  * Genera las <option> de un <select> a partir de una lista de items.
  * @param {Array}  items          Lista de objetos disponibles.
@@ -27,7 +26,6 @@ function generarOpcionesSelect(items, valorKey, textoKey, textoVacio) {
  */
 function generarFilasDocentesDisponibles(listaCorreos) {
   return listaCorreos
-    .filter(correo => correo.tipo === "DOC")
     .map(correo => `
       <tr>
         <td>${correo.nombreCorreo}</td>
@@ -186,7 +184,7 @@ function renderFormularioGestor(contenedor) {
       </div>
  
       <div class="col-12">
-        <button type="button" class="btn btn-success w-100" onclick="guardarUsuario()">
+        <button type="button" data-bs-dismiss="modal" class="btn btn-success w-100" onclick="guardarUsuario()">
           Guardar
         </button>
       </div>
@@ -200,19 +198,51 @@ function renderFormularioTelefono(contenedor, titulo) {
  
   contenedor.innerHTML = `
     <div class="mb-3">
-      <label class="form-label">Nombre Teléfono</label>
-      <input type="text" class="form-control" name="nombreTelefono" required>
+      <label class="form-label">Numero de Teléfono</label>
+      <input type="text" class="form-control" name="telefonoCorporativo" id="telefonoCorporativo" required></br>
+
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Diplomados disponibles</label>
+        <select class="form-control" name="type" id="type">
+          <option value="">Elegir</option>
+          <option value="ADM">Administrativo</option>
+          <option value="PROPIO">Propio</option>
+        </select>
+      </div>
+      </br>
+      <div class="col-12">
+        <button type="button" class="btn btn-success w-100" onclick="crearTelefonoAPI()" data-bs-dismiss="modal">
+          Guardar
+        </button>
+      </div>
     </div>
   `;
 }
  
 function renderFormularioCorreo(contenedor, titulo) {
-  titulo.textContent = "Agregar Correo";
+  titulo.textContent = "Agregar Correo Corporativo";
  
   contenedor.innerHTML = `
     <div class="mb-3">
-      <label class="form-label">Nombre Correo</label>
-      <input type="email" class="form-control" name="nombreCorreo" required>
+      <label class="form-label">Correo Corporativo</label>
+
+      <input class="form-control" name="correoCorporativo" id="correoCorporativo" required></br>
+      <input class="form-control" name="password" id="password" required></br>
+
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Diplomados disponibles</label>
+        <select class="form-control" name="type" id="type">
+          <option value="">Elegir</option>
+          <option value="ADM">Administrativo</option>
+          <option value="DOC">Propio</option>
+        </select>
+      </div>
+
+      <div class="col-12">
+        <button type="button" class="btn btn-success w-100" onclick="crearCorreoAPI()" data-bs-dismiss="modal">
+          Guardar
+        </button>
+      </div>
     </div>
   `;
 }
@@ -354,7 +384,7 @@ function mostrarFormularioNuevoDiplomado() {
         </div>
       </div>
  
-      <button type="button" class="btn btn-success w-100 mt-3" onclick="crearDiplomado()">
+      <button type="button" class="btn btn-success w-100 mt-3" onclick="crearDiplomado()" data-bs-dismiss="modal">
         Guardar Diplomado
       </button>
  
@@ -463,7 +493,7 @@ function mostrarFormularioModulo() {
       </div>
     </div>
  
-    <button type="button" class="btn btn-success w-100 mt-3" onclick="crearDiplomado()">
+    <button type="button" class="btn btn-success w-100 mt-3" onclick="crearDiplomado()" data-bs-dismiss="modal">
       Guardar Diplomado
     </button>
   `;

@@ -6,9 +6,9 @@ CRUD DE LA ENTIDAD USUARIOS
 /** UPDATE USER */
 async function editarUsuarioAPI() {
 const data = {
-  accion: "editar",
-  bloque: "estudiantes",
-  estudiante: {
+  accion: "editarUsuario",
+  bloque: "usuarios",
+  usuarios: {
     idUsuario: document.getElementById("idUsuario").value,
     ci: document.getElementById("ci").value,
     nombres: document.getElementById("nombres").value,
@@ -28,7 +28,7 @@ fetch(API_URL + "?bloque=estudiantes", {
 .then(res => res.json())
 .then(response => {
     console.log(response);
-    actualizarEstudiante(data.estudiante);
+    actualizarEstudiante(data);
 
 });
     
@@ -84,12 +84,9 @@ function guardarUsuario() {
   .then(res => res.json())
   .then(response => {
     console.log("Respuesta servidor:", response);
-    alert("Usuario creado correctamente");
 
-    // 🔄 refrescar datos sin recargar la página
-    if (typeof refrescarDatos === "function") {
-      refrescarDatos();
-    }
+    actualizarEstudiante(data) ;
+
   })
   .catch(error => {
     console.error("Error:", error);
@@ -125,7 +122,7 @@ function agregarTelefonoUsuario(){
   .then(res => res.json())
   .then(response => {
       console.log(response);
-       actualizarTelefono(data.usuarios) ;
+       actualizarTelefonoUsuario(data.usuarios) ;
   });
 }
 
@@ -153,7 +150,7 @@ function agregarCorreoUsuario(){
   .then(res => res.json())
   .then(response => {
       console.log(response);
-       actualizarCorreo(data.usuarios) ;
+       actualizarCorreoUsuario(data.usuarios) ;
   });
 }
 
@@ -182,6 +179,6 @@ function agregarDiplomadoUsuario(){
   .then(res => res.json())
   .then(response => {
       console.log(response);
-       actualizarDiplomado(data.usuarios) ;
+       actualizarDiplomadoUsuario(data.usuarios) ;
   });
 }

@@ -42,6 +42,9 @@ async function cargarDatos() {
   diplomados = await resDiplomados.json();
   relacionesDiplomados = await resRelDiplomados.json();
 
+
+console.log(estudiantes);
+
 }
 
 
@@ -87,7 +90,7 @@ function crearDiplomado() {
 
     // 👉 Ocultar loader
     document.getElementById("loader").classList.add("hidden");
-
+    actualizarDiplomado(data);
     alert("Curso creado 🚀");
   })
   .catch(error => {
@@ -101,10 +104,6 @@ function crearDiplomado() {
 
       bloqueado = false; // 🔓 liberar render
     });;
-
-
-console.log(data);
-
 
 
 }

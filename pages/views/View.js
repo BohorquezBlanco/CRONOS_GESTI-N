@@ -17,8 +17,8 @@ function renderUsuarios() {
     let correosHTML = misCorreos.length
       ? misCorreos.map(c => `
           <div>
-            <div>${c.nombreCorreo}</div><br>
-            <small>Contraseña: ${c.password || 'Sin contraseña'}</small>
+            <div>${c.nombreCorreo}</div>
+            <small>Contraseña: ${c.password || 'Sin contraseña'}</small><br>
           </div>
         `).join('')
       : 'Sin correos';
@@ -29,8 +29,6 @@ function renderUsuarios() {
       .filter(r => String(r.idUsuario) === String(e.id))
       .map(r => telefonos.find(t => String(t.id) === String(r.idTelefono)))
       .filter(t => t && t.estado === "ACTIVO");
-
-console.log(misTelefonos);
 
     let telefonosHTML = misTelefonos.length
       ? misTelefonos.map(t => `
