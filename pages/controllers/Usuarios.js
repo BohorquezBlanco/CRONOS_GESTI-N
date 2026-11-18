@@ -2,38 +2,52 @@
 CRUD DE LA ENTIDAD USUARIOS  
  */
 
-
 /** UPDATE USER */
 async function editarUsuarioAPI() {
-const data = {
-  accion: "editarUsuario",
-  bloque: "usuarios",
-  usuarios: {
-    idUsuario: document.getElementById("idUsuario").value,
-    ci: document.getElementById("ci").value,
-    nombres: document.getElementById("nombres").value,
-    apellidos: document.getElementById("apellidos").value,
-    celularPersonal: document.getElementById("celularPersonal").value,
-    estado: document.getElementById("estado").value,
-    tipo: document.getElementById("tipo").value
+  const data = {
+    accion: "editarUsuario",
+    bloque: "usuarios",
+    usuarios: {
+      idUsuario: document.getElementById("idUsuario").value,
+      ci: document.getElementById("ci").value,
+      nombres: document.getElementById("nombres").value,
+      apellidos: document.getElementById("apellidos").value,
+      celularPersonal: document.getElementById("celularPersonal").value,
+      estado: document.getElementById("estado").value,
+      tipo: document.getElementById("tipo").value
+    }
+  };
+
+  console.log(data);
+
+  try {
+    const res = await fetch(API_URL + "?bloque=usuarios", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+
+    if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
+
+    const response = await res.json();
+    console.log("Respuesta del servidor:", response);
+
+    // Actualiza el arreglo local y repinta
+    actualizarUsuarioLocal(data.usuarios);
+
+    // Cierra el modal solo si todo salió bien
+    const modalEl = document.getElementById("modalFormulario"); // ← pon aquí el id real de tu modal
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+
+    return response;
+
+  } catch (error) {
+    console.error("Error al editar usuario:", error);
+    alert("No se pudo guardar los cambios. Revisa la consola.");
   }
-};
-
-console.log(data)
-
-fetch(API_URL + "?bloque=estudiantes", {
-  method: "POST",
-  body: JSON.stringify(data)
-})
-.then(res => res.json())
-.then(response => {
-    console.log(response);
-    actualizarEstudiante(data);
-
-});
-    
 }
-
 
 
 

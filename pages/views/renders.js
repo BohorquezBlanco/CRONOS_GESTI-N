@@ -152,6 +152,27 @@ function actualizarCorreo(data) {
 }
 
 
+//Renderizacion de la relacion cuando se desactiva una relacion con el telefono
+function inactivarRelacionLocal(idUsuario, idTelefono) {
+  const rel = relacionesTelefonos.find(r =>
+    String(r.idUsuario) === String(idUsuario) &&
+    String(r.idTelefono) === String(idTelefono) &&
+    String(r.estado).trim().toUpperCase() === 'ACTIVO'
+  );
+
+  if (!rel) return false;
+
+  rel.estado = 'INACTIVO';
+  rel.fechaFinalizacion = new Date();
+
+  renderUsuarios();   // ← pon aquí la función que repinta los chips (la que tiene el bloque TELEFONOS)
+  renderTelefonos();  // ← y la que repinta la lista de teléfonos disponibles, si aplica
+
+  return true;
+}
+
+
+
 function actualizarTelefono(data) {
 
     const telefonoCorporativo = data.telefonoCorporativo;
@@ -171,6 +192,25 @@ function actualizarTelefono(data) {
 
     return true;
 }
+
+function inactivarRelacionLocal(idUsuario, idTelefono) {
+  const rel = relacionesTelefonos.find(r =>
+    String(r.idUsuario) === String(idUsuario) &&
+    String(r.idTelefono) === String(idTelefono) &&
+    String(r.estado).trim().toUpperCase() === 'ACTIVO'
+  );
+
+  if (!rel) return false;
+
+  rel.estado = 'INACTIVO';
+  rel.fechaFinalizacion = new Date();
+
+  renderUsuarios();   // ← pon aquí la función que repinta los chips (la que tiene el bloque TELEFONOS)
+  renderTelefonos();  // ← y la que repinta la lista de teléfonos disponibles, si aplica
+
+  return true;
+}
+
 
 
 function actualizarDiplomado(data) {
@@ -198,3 +238,19 @@ function actualizarDiplomado(data) {
     return true;
 }
 
+
+
+function actualizarUsuarioLocal(u) {
+  const usuario = estudiantes.find(x => String(x.id) === String(u.idUsuario));
+  if (!usuario) return false;
+
+  usuario.ci = u.ci;
+  usuario.nombres = u.nombres;
+  usuario.apellidos = u.apellidos;
+  usuario.celularPersonal = u.celularPersonal;
+  usuario.estado = u.estado;
+  usuario.tipo = u.tipo;
+
+  renderUsuarios();   // ← el render que ya usas en actualizarEstudiante()
+  return true;
+}

@@ -45,28 +45,36 @@ function renderUsuarios() {
 
     /* ===== CORREOS ===== */
     const misCorreos = relacionesCorreos
-      .filter(r => String(r.idUsuario) === String(e.id))
+      .filter(r => String(r.idUsuario) === String(e.id) &&
+                  String(r.estado).trim().toUpperCase() === 'ACTIVO')
       .map(r => correos.find(c => String(c.id) === String(r.idCorreo)))
       .filter(Boolean);
 
     const correosHTML = misCorreos.length
       ? misCorreos.map(c => `
           <div class="correo-card">
-            <div class="correo-mail">${esc(c.nombreCorreo)}</div>
+            <div class="correo-header">
+              <div class="correo-mail">${esc(c.nombreCorreo)}</div>
+              <button type="button"
+                      class="chip-close btn-eliminar-correo"
+                      title="Quitar correo"
+                      onclick="eliminarCorreoAPI('${esc(e.id)}', '${esc(c.id)}')">✕</button>
+            </div>
             ${c.password
               ? `<div class="correo-pass">
-                   <span class="pass-text" data-pass="${esc(c.password)}">••••••••</span>
-                   <button type="button" class="btn-ver-pass">Ver</button>
-                 </div>`
+                  <span class="pass-text" data-pass="${esc(c.password)}">••••••••</span>
+                  <button type="button" class="btn-ver-pass">Ver</button>
+                </div>`
               : `<div class="correo-pass">Sin contraseña</div>`}
           </div>`).join('')
       : `<span class="empty-text">Sin correos</span>`;
 
     /* ===== TELEFONOS ===== */
     const misTelefonos = relacionesTelefonos
-      .filter(r => String(r.idUsuario) === String(e.id))
+      .filter(r => String(r.idUsuario) === String(e.id) &&
+                  String(r.estado).trim().toUpperCase() === 'ACTIVO')
       .map(r => telefonos.find(t => String(t.id) === String(r.idTelefono)))
-      .filter(t => t && t.estado === 'ACTIVO');
+      .filter(Boolean);
 
     const telefonosHTML = misTelefonos.length
       ? misTelefonos.map(t => `
@@ -75,7 +83,7 @@ function renderUsuarios() {
             <button type="button"
                     class="chip-close btn-eliminar-telefono"
                     title="Quitar teléfono"
-                    data-id="${esc(t.id)}">✕</button>
+                    onclick="eliminarTelefonoAPI('${esc(e.id)}', '${esc(t.id)}')">✕</button>
           </span>`).join('')
       : `<span class="empty-text">Sin teléfonos</span>`;
 
