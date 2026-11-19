@@ -893,99 +893,119 @@ table.tabla-filtrable .btn-editar {
 .modal { z-index: 1055; } /* Bootstrap necesita esto para sus modales */
 
 
-/* ---------- Convoy navideño ---------- */
+/* ---------- Santa repartidor ---------- */
 .santa-fly {
+  --flip: 1;
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 60px);
+  top: 0;
   left: 0;
-  z-index: 1040;            /* sobre el contenido, bajo los modales (1055) */
+  z-index: 1040;                 /* sobre el contenido, bajo los modales (1055) */
+  width: max-content;
   pointer-events: none;
   white-space: nowrap;
-  width: max-content;
-  transform: translateX(110vw);
-  animation: santa-cruzar 30s linear infinite;
-  animation-delay: 3s;
+  will-change: transform;
+  transform: translate3d(-400px, -400px, 0);
 }
 .convoy {
+  font-size: clamp(0.85rem, 2.4vw, 1.3rem);   /* ← tamaño general */
   display: flex;
   align-items: center;
   animation: convoy-flotar 2.4s ease-in-out infinite;
 }
 
-/* Cara del jefe */
+/* Trineo con el jefe */
+.trineo {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.trineo-emoji {
+  font-size: 2.6em;
+  line-height: 1;
+  display: block;
+  transform: scaleX(-1);
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
+}
 .jefe {
-  height: clamp(58px, 11vw, 100px);
+  position: absolute;
+  bottom: 38%;
+  left: 50%;
+  height: 3em;                                 /* ← tamaño de la cara */
   width: auto;
-  margin-right: -6px;
+  scale: var(--flip) 1;                        /* evita que la cara se vea en espejo */
   transform-origin: 50% 90%;
   animation: jefe-balanceo 1.8s ease-in-out infinite;
+  z-index: 1;
   filter:
-    drop-shadow(0 0 10px rgba(255, 215, 120, 0.85))
-    drop-shadow(0 6px 8px rgba(0, 0, 0, 0.3));
+    drop-shadow(0 0 8px rgba(255, 215, 120, 0.9))
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
 }
 
 /* Cuerda de caramelo */
 .cuerda {
-  width: clamp(22px, 4vw, 40px);
-  height: 4px;
-  border-radius: 4px;
-  background: repeating-linear-gradient(
-    -45deg, #c0392b 0 5px, #ffffff 5px 10px
-  );
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  width: 1.4em;
+  height: 3px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(-45deg, #c0392b 0 4px, #fff 4px 8px);
 }
 
-/* Renos y trineo */
-.renos, .trineo-wrap {
+/* Renos */
+.renos {
   display: flex;
   align-items: center;
-  font-size: clamp(1.6rem, 4.5vw, 2.7rem);
-  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.25));
+  font-size: 1.2em;
+  transform: scaleX(-1);
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.25));
 }
-.renos span {
-  display: inline-block;
-  animation: reno-galope 0.9s ease-in-out infinite;
-}
+.renos span { display: inline-block; animation: reno-galope 0.9s ease-in-out infinite; }
 .renos span:nth-child(2) { animation-delay: 0.15s; }
 .renos span:nth-child(3) { animation-delay: 0.30s; }
 
-/* Estela dorada con destellos */
+/* Estela dorada */
 .estela {
   position: relative;
-  width: clamp(70px, 14vw, 150px);
-  height: 8px;
-  margin-left: 4px;
-  border-radius: 8px;
-  background: linear-gradient(90deg, rgba(255, 200, 80, 0.9), rgba(255, 200, 80, 0));
+  width: 4em;
+  height: 6px;
+  margin-right: 2px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 200, 80, 0), rgba(255, 200, 80, 0.9));
   filter: blur(1px);
 }
 .estela::before, .estela::after {
   content: '✨';
   position: absolute;
-  top: -10px;
-  font-size: 1rem;
+  top: -9px;
+  font-size: 0.8em;
   filter: none;
   animation: destello 1.2s ease-in-out infinite;
 }
 .estela::before { left: 20%; }
 .estela::after  { left: 60%; animation-delay: 0.6s; }
 
-@keyframes santa-cruzar {            /* cruza ~11 s, descansa ~19 s */
-  0%   { transform: translateX(110vw); }
-  37%  { transform: translateX(-100%); }
-  100% { transform: translateX(-100%); }
+/* Regalos que caen */
+.regalo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1039;
+  pointer-events: none;
+  font-size: 1.4rem;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3));
 }
+
 @keyframes convoy-flotar {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-12px); }
+  50%      { transform: translateY(-6px); }
 }
 @keyframes jefe-balanceo {
-  0%, 100% { transform: rotate(-5deg); }
-  50%      { transform: rotate(5deg); }
+  0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+  50%      { transform: translateX(-50%) rotate(5deg); }
 }
 @keyframes reno-galope {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50%      { transform: translateY(-7px) rotate(-4deg); }
+  50%      { transform: translateY(-4px) rotate(-4deg); }
 }
 @keyframes destello {
   0%, 100% { opacity: 0.2; transform: scale(0.6); }
@@ -993,7 +1013,7 @@ table.tabla-filtrable .btn-editar {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .santa-fly { display: none; }
+  .santa-fly, .regalo { display: none; }
 }
 
 
@@ -1001,7 +1021,7 @@ table.tabla-filtrable .btn-editar {
 </head>
 <body>
 <div id="particles-js"></div>
-<div class="santa-fly" aria-hidden="true">
+<div id="santa" class="santa-fly" aria-hidden="true">
   <div class="convoy">
     <span class="estela"></span>
     <div class="trineo">
@@ -1168,34 +1188,86 @@ table.tabla-filtrable .btn-editar {
 
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
 <script>
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    particlesJS('particles-js', {
-      particles: {
-        number: { value: window.innerWidth < 600 ? 40 : 90 },
-        color: { value: ['#ffffff', '#ffffff', '#c0392b', '#2f8f4e'] },
-        shape: {
-          type: 'circle',
-          stroke: { width: 1, color: '#b9d1bd' }   // borde para que se vea sobre el fondo claro
-        },
-        opacity: { value: 0.9, random: true },
-        size: { value: 4, random: true },
-        line_linked: { enable: false },
-        move: {
-          enable: true,
-          speed: 2,
-          direction: 'bottom',
-          random: true,
-          straight: false,
-          out_mode: 'out'
-        }
-      },
-      interactivity: {
-        events: { onhover: { enable: false }, onclick: { enable: false } }
-      },
-      retina_detect: true
-    });
+(() => {
+  const santa = document.getElementById('santa');
+  if (!santa || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const trineo = santa.querySelector('.trineo');
+  const REGALOS = ['🎁', '🎁', '🎀', '🧸', '🍬', '⭐'];
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  let w = santa.offsetWidth, h = santa.offsetHeight;
+  let x = -w, y = rand(100, innerHeight * 0.5);   // entra desde la izquierda
+  let vx = 100, vy = 0, dir = 1, ang = 0;
+  let tx = 0, ty = 0;
+  let tRegalo = 1.2;
+  let last = performance.now();
+
+  function nuevoDestino() {
+    w = santa.offsetWidth; h = santa.offsetHeight;
+    tx = rand(w / 2, Math.max(w / 2 + 1, innerWidth - w / 2));
+    ty = rand(h / 2 + 60, Math.max(h / 2 + 61, innerHeight - h / 2));
   }
+
+  function soltarRegalo() {
+    if (document.querySelectorAll('.regalo').length > 14) return;
+    const r = trineo.getBoundingClientRect();
+    const sx = r.left + r.width / 2 - 10;
+    const sy = r.bottom - 8;
+    const dist = Math.max(90, Math.min(innerHeight - sy, 380));
+    const drift = vx * 0.4 + rand(-25, 25);
+    const giro = rand(-200, 200);
+
+    const g = document.createElement('span');
+    g.className = 'regalo';
+    g.textContent = REGALOS[Math.floor(Math.random() * REGALOS.length)];
+    document.body.appendChild(g);
+
+    g.animate([
+      { transform: `translate(${sx}px, ${sy}px) rotate(0deg)`, opacity: 1, easing: 'ease-in' },
+      { transform: `translate(${sx + drift}px, ${sy + dist}px) rotate(${giro}deg)`, opacity: 1, offset: 0.85 },
+      { transform: `translate(${sx + drift}px, ${sy + dist + 12}px) rotate(${giro}deg)`, opacity: 0 }
+    ], { duration: 900 + dist * 2.2 }).onfinish = () => g.remove();
+  }
+
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+
+    let dx = tx - x, dy = ty - y;
+    let dist = Math.hypot(dx, dy) || 1;
+    if (dist < 30) { nuevoDestino(); dx = tx - x; dy = ty - y; dist = Math.hypot(dx, dy) || 1; }
+
+    const vel = innerWidth < 600 ? 90 : 140;        // píxeles por segundo
+    const k = Math.min(1, dt * 1.8);                // giros suaves
+    vx += (dx / dist * vel - vx) * k;
+    vy += (dy / dist * vel - vy) * k;
+    x += vx * dt;
+    y += vy * dt;
+
+    // Gira hacia donde avanza
+    if (Math.abs(vx) > 20) {
+      const nueva = vx >= 0 ? 1 : -1;
+      if (nueva !== dir) { dir = nueva; santa.style.setProperty('--flip', dir); }
+    }
+    // Se inclina al subir/bajar
+    const objetivo = Math.max(-25, Math.min(25, Math.atan2(vy, Math.abs(vx) || 1) * 57.3 * 0.6));
+    ang += (objetivo - ang) * Math.min(1, dt * 4);
+
+    santa.style.transform =
+      `translate3d(${x - w / 2}px, ${y - h / 2}px, 0) scaleX(${dir}) rotate(${ang}deg)`;
+
+    tRegalo -= dt;
+    if (tRegalo <= 0) { soltarRegalo(); tRegalo = rand(0.9, 1.8); }
+
+    requestAnimationFrame(frame);
+  }
+
+  nuevoDestino();
+  requestAnimationFrame(frame);
+})();
 </script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../accesorios/navbar.js"> </script>
