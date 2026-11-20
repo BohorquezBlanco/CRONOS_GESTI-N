@@ -13,7 +13,7 @@ function loadNavbar() {
           <li class="nav-item"><a class="nav-link" href="index.html">Panel de Control</a></li>
           <li class="nav-item"><a class="nav-link" target="_blank"  href="utilidades.html">Utilidades</a></li>
           <li class="nav-item"><a class="nav-link" target="_blank"  href="nexos.html">Anexos</a></li>
-
+          <li class="nav-item"><a class="nav-link" target="_blank"  href="certificadosControl/index.html">Certificados</a></li>
         </ul>
       </div>
     </div>
