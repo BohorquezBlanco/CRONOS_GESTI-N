@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Generador de script de notas</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--tx:#1d1d1b;--mut:#6b6b66;--bd:#dcdcd6;--ac:#2563eb;--act:#fff;--ok:#15803d;--code:#f0f0ec;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--card:#212120;--tx:#ececea;--mut:#a0a09a;--bd:#3a3a37;--ac:#6d9bff;--act:#101010;--ok:#4ade80;--code:#1a1a19;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161615;--card:#212120;--tx:#ececea;--mut:#a0a09a;--bd:#3a3a37;--ac:#6d9bff;--act:#101010;--ok:#4ade80;--code:#1a1a19;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:900px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;margin:0 0 4px}
+p.s{color:var(--mut);margin:0 0 20px}
+section{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 10px}
+textarea,input[type=text]{width:100%;background:var(--code);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:10px;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace}
+textarea{min-height:200px;resize:vertical;white-space:pre}
+button{background:var(--ac);color:var(--act);border:0;border-radius:8px;padding:10px 16px;font:600 14px system-ui;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.cols label{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;margin:0 8px 8px 0;font-size:13px}
+.cols select{background:var(--code);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:2px 4px}
+.tw{overflow-x:auto;max-height:280px;overflow-y:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--bd);padding:5px 8px;text-align:left;white-space:nowrap}
+th{color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--card)}
+.ok{color:var(--ok);font-weight:600}
+.m{color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>Generador de script de notas</h1>
+<p class="s">Pega tu Excel (con encabezados), elige las columnas y copia el script para la consola del sistema.</p>
+
+<section>
+<h2>1. Pega aquí los datos del Excel</h2>
+<textarea id="entrada" placeholder="NOMBRE COMPLETO&#9;Asistencia&#9;Práctica 1&#9;...&#10;MARIA ISABEL ACARAPI PLATA&#9;9&#9;26&#9;22&#9;30&#9;0&#9;87"></textarea>
+<div class="row"><button id="btnLeer">Leer datos</button><span class="m" id="info"></span></div>
+</section>
+
+<section id="sCols" hidden>
+<h2>2. Columnas → campos del sistema</h2>
+<p class="m" style="margin-top:0">Marca las columnas que quieres cargar y a qué campo (<code>.campoN</code>) va cada una. Por defecto: las 5 primeras columnas de notas en .campo1 a .campo5 (como en tu script anterior; la Nota Final la calcula el sistema).</p>
+<div class="cols" id="cols"></div>
+<div class="row"><label><input type="checkbox" id="ceros" checked> Poner 0 a los alumnos del sistema que no estén en el Excel</label></div>
+<div class="row"><button id="btnGen">Generar script</button></div>
+</section>
+
+<section id="sOut" hidden>
+<h2>3. Script para la consola</h2>
+<textarea id="salida" readonly style="min-height:260px"></textarea>
+<div class="row"><button id="btnCopy">Copiar script</button><span class="ok" id="okc"></span></div>
+<p class="m">En el sistema: abre la página con la lista de alumnos, presiona F12 → pestaña Consola, pega el script y Enter.</p>
+</section>
+
+<section id="sPrev" hidden>
+<h2>Vista previa</h2>
+<div class="tw"><table id="tabla"></table></div>
+</section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
