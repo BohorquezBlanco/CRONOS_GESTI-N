@@ -37,7 +37,9 @@ main{max-width:1280px;margin:-44px auto 40px;padding:0 24px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(18,38,58,.08)}
 
 /* Barra de herramientas */
-.toolbar{position:sticky;top:0;z-index:5;padding:14px;display:grid;gap:12px;grid-template-columns:minmax(220px,1fr) minmax(180px,260px) minmax(160px,210px) auto auto;align-items:center}
+.toolbar{position:sticky;top:0;z-index:5;padding:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:var(--surface);border-radius:14px}
+.toolbar .search{flex:1 1 260px}
+.toolbar select.f{flex:0 1 220px;width:auto;min-width:160px}
 .search{position:relative}
 .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink2)}
 .search input{width:100%;padding:11px 12px 11px 40px;border:1px solid var(--line);border-radius:9px;background:#F7F9FB}
@@ -115,7 +117,24 @@ dialog::backdrop{background:rgba(18,38,58,.55)}
 #toast.show{opacity:1}
 #toast.bad{background:var(--bad)}
 
-@media (max-width:900px){.toolbar{grid-template-columns:1fr 1fr;position:static}.search{grid-column:1/-1}.d-body{grid-template-columns:1fr}}
+/* Filtros por columna, orden y copiar */
+.th-sort{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit;display:inline-flex;gap:5px;align-items:center}
+.th-sort:hover{color:var(--ink)}
+.th-sort i{font-style:normal;opacity:.45;font-size:.75rem}
+.th-sort.on i{opacity:1;color:var(--brand)}
+tr.filters th{background:#fff;padding:6px 14px 8px;border-bottom:1px solid var(--line)}
+.cf{width:100%;min-width:110px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#F7F9FB;font-size:.82rem}
+.cf:focus{background:#fff;border-color:var(--brand)}
+.cf.active{border-color:var(--brand);background:#E6F2F5}
+.btn.sm{padding:6px 12px;font-size:.82rem;border-radius:8px}
+.dip-tools{display:flex;gap:12px;align-items:center}
+.btn.pend[aria-pressed=true]{background:var(--warn);color:#fff;border-color:var(--warn)}
+.btn.pend{background:var(--warn-bg);color:var(--warn);border-color:#EBCB8B}
+.chip.btn-chip{cursor:pointer;background:#fff}
+.chip.btn-chip:hover{background:#F3F6F9}
+.hoja{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;white-space:nowrap;color:var(--ink2)}
+body.pending .seg,body.pending #est,body.pending #btnNew{display:none}
+@media (max-width:900px){.toolbar{position:static}.d-body{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -145,6 +164,8 @@ dialog::backdrop{background:rgba(18,38,58,.55)}
         <button data-v="eliminados" aria-pressed="false">Eliminados</button>
         <button data-v="todos" aria-pressed="false">Todos</button>
       </div>
+      <button class="btn pend" id="btnPend" aria-pressed="false" title="Ver todos los certificados EN PROCESO de todas las gestiones">⏳ En proceso (todas las gestiones)</button>
+      <button class="btn ghost" id="btnCopyAll" title="Copiar nombres y códigos de todo lo que se ve en pantalla">⧉ Copiar lista</button>
       <button class="btn primary" id="btnNew">+ Nueva emisión</button>
     </div>
     <div class="stats" id="stats"></div>
@@ -206,7 +227,7 @@ async function run(fn, ...args) {
   return out.data;
 }
 
-const S = { tipo: 'D', tipos: {}, sheets: [], year: null, rows: [], q: '', dip: '', est: '', view: 'activos', editing: null };
+const S = { tipo: 'D', tipos: {}, sheets: [], year: null, rows: [], q: '', dip: '', est: '', view: 'activos', editing: null, mode: 'sheet', cf: {}, groups: {} };
 const IC = {
   edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   del: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>',
@@ -223,7 +244,16 @@ function toast(msg, bad) {
   clearTimeout(toast.t); toast.t = setTimeout(() => t.className = '', 3200);
 }
 const SINGULAR = { D: 'Diplomado', C: 'Curso', M: 'Maestría' };
-const sing = () => SINGULAR[S.tipo] || 'Programa';
+const sing = t => SINGULAR[t || S.tipo] || 'Programa';
+const progName = () => S.mode === 'pending' ? 'programas' : (S.tipos[S.tipo] || 'programas').toLowerCase();
+const tipoOf = r => r.tipo || S.tipo;
+const yearOf = r => r.year || S.year;
+const rk = r => tipoOf(r) + '-' + yearOf(r) + '-' + r.id;
+function setMode(m) {
+  S.mode = m; S.cf = {};
+  document.body.classList.toggle('pending', m === 'pending');
+  $('#btnPend').setAttribute('aria-pressed', m === 'pending');
+}
 const yearsOf = t => S.sheets.filter(s => s.tipo === t).map(s => s.year);
 async function init() {
   loading('Conectando con la hoja de cálculo…');
@@ -234,12 +264,12 @@ async function init() {
   } catch (e) { $('#content').innerHTML = `<div class="panel empty"><h3>No se pudo cargar</h3><p>${esc(e.message)}</p></div>`; }
 }
 async function loadYear(y) {
-  S.year = y; S.dip = ''; S.est = ''; S.q = ''; $('#q').value = ''; loading('Cargando ' + S.tipo + '-' + y + '…');
+  setMode('sheet'); S.year = y; S.dip = ''; S.est = ''; S.q = ''; $('#q').value = ''; loading('Cargando ' + S.tipo + '-' + y + '…');
   try { S.rows = await run('api_getRecords', S.tipo, y); fillDips(); render(); }
   catch (e) { $('#content').innerHTML = `<div class="panel empty"><h3>Error</h3><p>${esc(e.message)}</p></div>`; }
 }
 async function setTipo(t) {
-  S.tipo = t; fillTabs(); const ys = yearsOf(t); S.year = ys[0] || null; fillYears(); labels();
+  setMode('sheet'); S.tipo = t; fillTabs(); const ys = yearsOf(t); S.year = ys[0] || null; fillYears(); labels();
   if (S.year) return loadYear(S.year);
   S.rows = []; S.dip = ''; fillDips(); render();
 }
@@ -249,7 +279,7 @@ function fillTabs() {
   labels();
 }
 function labels() {
-  $('#dip').options[0].text = 'Todos los ' + (S.tipos[S.tipo] || 'programas').toLowerCase();
+  $('#dip').options[0].text = 'Todos los ' + progName();
   document.querySelector('label[for=fDip]').textContent = sing();
   $('#q').placeholder = 'Buscar por nombre, código o ' + sing().toLowerCase();
 }
@@ -267,7 +297,7 @@ function fillEst() {
 function fillDips() {
   fillEst();
   const list = [...new Set(S.rows.map(r => r.diplomado).filter(Boolean))].sort();
-  $('#dip').innerHTML = `<option value="">Todos los ${(S.tipos[S.tipo] || 'programas').toLowerCase()}</option>` +
+  $('#dip').innerHTML = `<option value="">Todos los ${progName()}</option>` +
     list.map(d => `<option value="${esc(d)}" ${d === S.dip ? 'selected' : ''}>${esc(d)}</option>`).join('');
   $('#dipList').innerHTML = list.map(d => `<option value="${esc(d)}">`).join('');
 }
@@ -277,47 +307,132 @@ function estadoBadge(e) {
   const k = norm(e); const c = k.includes('impres') ? 'b-ok' : k.includes('pendiente') ? 'b-warn' : k.includes('entreg') ? 'b-info' : 'b-info';
   return `<span class="badge ${c}">${esc(e || '—')}</span>`;
 }
+function sortKey(r, k) {
+  if (k === 'nombre') return norm(r.nombres + ' ' + r.apellidos);
+  if (k === 'codigo') return norm(r.codigo === 'N/A' ? '~' : r.codigo);
+  if (k === 'estado') return norm(r.estado);
+  if (k === 'hoja') return tipoOf(r) + String(9999 - yearOf(r));
+  return r.id;
+}
+function cmp(a, b) {
+  return (typeof a === 'number' && typeof b === 'number') ? a - b : String(a).localeCompare(String(b), 'es', { numeric: true });
+}
+function cfOf(d) { return S.cf[d] ||= { cod: '', est: '', sort: S.mode === 'pending' ? 'hoja' : 'id', dir: 1 }; }
+/** Filas de una tabla: filtros de columna + orden. */
+function tableRows(d) {
+  const c = cfOf(d), ct = norm(c.cod).trim();
+  return (S.groups[d] || []).filter(r =>
+    (!c.est || r.estado === c.est) && (!ct || norm(r.codigo).includes(ct))
+  ).sort((a, b) => c.dir * cmp(sortKey(a, c.sort), sortKey(b, c.sort)) || a.id - b.id);
+}
+function theadHtml(d) {
+  const c = cfOf(d), pend = S.mode === 'pending';
+  const th = (k, label) => {
+    const on = c.sort === k;
+    return `<th><button class="th-sort ${on ? 'on' : ''}" data-sort="${k}" data-d="${esc(d)}" title="Ordenar A→Z / Z→A">${label} <i>${on ? (c.dir > 0 ? '▲' : '▼') : '↕'}</i></button></th>`;
+  };
+  const ests = [...new Set((S.groups[d] || []).map(r => r.estado).filter(Boolean))].sort();
+  const cnt = e => S.groups[d].filter(r => r.estado === e).length;
+  const empty = '<th></th>';
+  return `<thead>
+    <tr>${th('id', 'ID')}${th('nombre', 'Titular')}${th('codigo', 'Código')}${th('estado', 'Estado')}${pend ? th('hoja', 'Hoja') : ''}<th>Periodo</th><th>Observación</th><th>Fechas</th><th></th></tr>
+    <tr class="filters"><th></th><th></th>
+      <th><input class="cf cf-cod ${c.cod ? 'active' : ''}" data-d="${esc(d)}" value="${esc(c.cod)}" placeholder="Filtrar código…" aria-label="Filtrar por código"></th>
+      <th><select class="cf cf-est ${c.est ? 'active' : ''}" data-d="${esc(d)}" aria-label="Filtrar por estado"><option value="">Todos</option>${ests.map(e => `<option value="${esc(e)}" ${e === c.est ? 'selected' : ''}>${esc(e)} (${cnt(e)})</option>`).join('')}</select></th>
+      ${pend ? empty : ''}${empty}${empty}${empty}${empty}</tr></thead>`;
+}
+function bodyHtml(d) { return tableRows(d).map(rowHtml).join('') || `<tr><td colspan="9" class="empty" style="padding:22px">Ningún registro coincide con los filtros de esta tabla.</td></tr>`; }
+function countLabel(d) {
+  const n = tableRows(d).length, t = S.groups[d].length;
+  return (n === t ? t : n + ' de ' + t) + ' ' + (t === 1 ? 'emisión' : 'emisiones');
+}
+function sectionOf(d) { return [...document.querySelectorAll('section[data-d]')].find(x => x.dataset.d === d); }
+function refreshTable(d) {
+  const sec = sectionOf(d); if (!sec) return;
+  sec.querySelector('tbody').innerHTML = bodyHtml(d);
+  sec.querySelector('.dip-count').textContent = countLabel(d);
+}
 function render() {
-  if (!S.year) { $('#content').innerHTML = `<div class="panel empty"><h3>Aún no hay hojas de ${esc((S.tipos[S.tipo] || '').toLowerCase())}</h3><p>Crea la primera con el botón “+ Gestión” (hoja ${S.tipo}-AAAA).</p></div>`; $('#stats').innerHTML = ''; return; }
+  const pend = S.mode === 'pending';
+  if (!S.year && !pend) { $('#content').innerHTML = `<div class="panel empty"><h3>Aún no hay hojas de ${esc((S.tipos[S.tipo] || '').toLowerCase())}</h3><p>Crea la primera con el botón “+ Gestión” (hoja ${S.tipo}-AAAA).</p></div>`; $('#stats').innerHTML = ''; return; }
   const tokens = norm(S.q).split(/\s+/).filter(Boolean);
   const rows = S.rows.filter(r => {
-    if (S.view === 'activos' && r.eliminacion) return false;
-    if (S.view === 'eliminados' && !r.eliminacion) return false;
+    if (!pend && S.view === 'activos' && r.eliminacion) return false;
+    if (!pend && S.view === 'eliminados' && !r.eliminacion) return false;
     if (S.dip && r.diplomado !== S.dip) return false;
     if (S.est && r.estado !== S.est) return false;
     const hay = norm(r.nombres + ' ' + r.apellidos + ' ' + r.codigo + ' ' + r.diplomado);
     return tokens.every(t => hay.includes(t));
   });
 
-  const act = S.rows.filter(r => !r.eliminacion);
-  $('#stats').innerHTML =
-    `<span class="chip">Hoja <b>${S.tipo}-${S.year}</b></span>` +
-    `<span class="chip">Activos <b>${act.length}</b></span>` +
-    `<span class="chip">Impresos <b>${act.filter(r => norm(r.estado).includes('impres')).length}</b></span>` +
-    `<span class="chip">Pendientes <b>${act.filter(r => norm(r.estado).includes('pendiente')).length}</b></span>` +
-    `<span class="chip">Eliminados <b>${S.rows.length - act.length}</b></span>` +
-    `<span class="chip">Mostrando <b>${rows.length}</b></span>`;
+  if (pend) {
+    const byHoja = {};
+    S.rows.forEach(r => { const k = tipoOf(r) + '-' + yearOf(r); byHoja[k] = (byHoja[k] || 0) + 1; });
+    $('#stats').innerHTML =
+      `<span class="chip">Vista <b>EN PROCESO · todas las gestiones</b></span>` +
+      `<span class="chip">Total <b>${S.rows.length}</b></span>` +
+      Object.keys(byHoja).sort().reverse().map(k => `<span class="chip">${k} <b>${byHoja[k]}</b></span>`).join('') +
+      `<span class="chip">Mostrando <b>${rows.length}</b></span>` +
+      `<span class="chip btn-chip" id="btnRefresh" role="button" tabindex="0" title="Volver a leer la hoja">↻ Actualizar</span>`;
+  } else {
+    const act = S.rows.filter(r => !r.eliminacion);
+    $('#stats').innerHTML =
+      `<span class="chip">Hoja <b>${S.tipo}-${S.year}</b></span>` +
+      `<span class="chip">Activos <b>${act.length}</b></span>` +
+      `<span class="chip">Impresos <b>${act.filter(r => norm(r.estado).includes('impres')).length}</b></span>` +
+      `<span class="chip">Pendientes <b>${act.filter(r => norm(r.estado).includes('pendiente')).length}</b></span>` +
+      `<span class="chip">Eliminados <b>${S.rows.length - act.length}</b></span>` +
+      `<span class="chip">Mostrando <b>${rows.length}</b></span>`;
+  }
 
-  if (!rows.length) { $('#content').innerHTML = '<div class="panel empty"><h3>Sin resultados</h3><p>Prueba con otra búsqueda o cambia los filtros.</p></div>'; return; }
+  if (!rows.length) {
+    $('#content').innerHTML = pend && !S.rows.length
+      ? '<div class="panel empty"><h3>Nada en proceso</h3><p>No hay certificados con estado EN PROCESO en ninguna gestión.</p></div>'
+      : '<div class="panel empty"><h3>Sin resultados</h3><p>Prueba con otra búsqueda o cambia los filtros.</p></div>';
+    S.groups = {}; return;
+  }
 
-  const groups = {};
-  rows.forEach(r => (groups[r.diplomado || 'SIN ' + sing().toUpperCase()] ||= []).push(r));
-  $('#content').innerHTML = Object.keys(groups).sort().map(d => {
-    const g = groups[d].sort((a, b) => a.id - b.id);
-    return `<section>
-      <div class="dip-head"><h2>${esc(d)}</h2><span>${g.length} ${g.length === 1 ? 'emisión' : 'emisiones'}</span></div>
-      <div class="panel tbl-wrap"><table>
-        <thead><tr><th>ID</th><th>Titular</th><th>Código</th><th>Estado</th><th>Periodo</th><th>Observación</th><th>Fechas</th><th></th></tr></thead>
-        <tbody>${g.map(rowHtml).join('')}</tbody></table></div></section>`;
-  }).join('');
+  S.groups = {};
+  rows.forEach(r => (S.groups[r.diplomado || 'SIN ' + (pend ? 'PROGRAMA' : sing().toUpperCase())] ||= []).push(r));
+  $('#content').innerHTML = Object.keys(S.groups).sort().map(d => `<section data-d="${esc(d)}">
+      <div class="dip-head"><h2>${esc(d)}</h2>
+        <div class="dip-tools"><span class="dip-count">${countLabel(d)}</span>
+        <button class="btn ghost sm" data-copy="${esc(d)}" title="Copiar nombres y códigos de esta tabla (para Excel o Word)">⧉ Copiar tabla</button></div></div>
+      <div class="panel tbl-wrap"><table>${theadHtml(d)}<tbody>${bodyHtml(d)}</tbody></table></div></section>`).join('');
 }
+
+/* ---------- Copiar (solo nombres y código) ---------- */
+async function copyRows(list) {
+  if (!list.length) return toast('No hay filas para copiar', true);
+  const data = list.map(r => [(r.nombres + ' ' + r.apellidos).replace(/\s+/g, ' ').trim(), r.codigo || '']);
+  const head = ['NOMBRES Y APELLIDOS', 'CÓDIGO'];
+  const text = [head, ...data].map(r => r.join('\t')).join('\n');
+  const html = '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse">' +
+    '<tr>' + head.map(h => `<th>${esc(h)}</th>`).join('') + '</tr>' +
+    data.map(r => '<tr>' + r.map(c => `<td>${esc(c)}</td>`).join('') + '</tr>').join('') + '</table>';
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([text], { type: 'text/plain' })
+    })]);
+  } catch (e) {
+    try { await navigator.clipboard.writeText(text); }
+    catch (e2) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+  }
+  toast('Copiadas ' + list.length + ' filas · pega en Excel o Word');
+}
+
 function rowHtml(r) {
   const del = !!r.eliminacion;
-  return `<tr class="${del ? 'deleted' : ''}" data-id="${r.id}">
+  return `<tr class="${del ? 'deleted' : ''}" data-k="${rk(r)}">
     <td class="id">${r.id}</td>
     <td class="name"><b>${esc(r.nombres)}</b><small>${esc(r.apellidos)}</small></td>
     <td class="code">${esc(r.codigo)}</td>
     <td>${estadoBadge(r.estado)}</td>
+    ${S.mode === 'pending' ? `<td class="hoja">${tipoOf(r)}-${yearOf(r)}</td>` : ''}
     <td>${esc(r.gestion)}</td>
     <td class="obs">${esc(r.observacion)}</td>
     <td class="dates">Creado: ${esc(r.creacion || '—')}<br>Modificado: ${esc(r.modificacion || '—')}${del ? `<br><span class="del">Eliminado: ${esc(r.eliminacion)}</span>` : ''}</td>
@@ -332,7 +447,7 @@ function rowHtml(r) {
 const F = { nom: '#fNom', ape: '#fApe', dip: '#fDip', est: '#fEst', ges: '#fGes', cod: '#fCod', obs: '#fObs' };
 function openForm(rec) {
   S.editing = rec || null;
-  $('#dTitle').textContent = (rec ? 'Modificar emisión · ' : 'Nueva emisión · ') + sing();
+  $('#dTitle').textContent = (rec ? 'Modificar emisión · ' : 'Nueva emisión · ') + sing(rec && tipoOf(rec));
   $('#dErr').hidden = true;
   $(F.nom).value = rec?.nombres || ''; $(F.ape).value = rec?.apellidos || '';
   $(F.dip).value = rec?.diplomado || S.dip || ''; $(F.est).value = rec?.estado || 'PENDIENTES ADMINISTRATIVOS';
@@ -346,7 +461,8 @@ async function save() {
   const b = $('#dSave'); b.disabled = true; b.innerHTML = '<span class="spin"></span> Guardando';
   $('#dErr').hidden = true;
   try {
-    S.rows = await run('api_save', S.tipo, S.year, d);
+    const was = S.editing; const rr = await run('api_save', tipoOf(was || {}), yearOf(was || {}), d);
+    S.rows = S.mode === 'pending' ? await run('api_byEstado', 'PROCESO', true) : rr;
     $('#dlg').close(); fillDips(); render(); toast(S.editing ? 'Cambios guardados' : 'Emisión registrada');
   } catch (e) { $('#dErr').textContent = e.message; $('#dErr').hidden = false; }
   b.disabled = false; b.textContent = 'Guardar';
@@ -362,8 +478,8 @@ function confirmBox(title, msg, yesLabel, danger) {
     $('#cNo').onclick = () => { d.close(); res(false); };
   });
 }
-async function act(a, id) {
-  const r = S.rows.find(x => x.id === id); if (!r) return;
+async function act(a, k) {
+  const r = S.rows.find(x => rk(x) === k); if (!r) return;
   if (a === 'edit') return openForm(r);
   const del = a === 'del';
   const ok = await confirmBox(del ? 'Eliminar registro' : 'Restaurar registro',
@@ -371,7 +487,8 @@ async function act(a, id) {
     (del ? 'Se marcará con la fecha de eliminación. Podrás restaurarlo después.' : 'Volverá a estar activo (se validará que no haya duplicados).'),
     del ? 'Eliminar' : 'Restaurar', del);
   if (!ok) return;
-  try { S.rows = await run(del ? 'api_delete' : 'api_restore', S.tipo, S.year, id); render(); toast(del ? 'Registro eliminado' : 'Registro restaurado'); }
+  try { const rr = await run(del ? 'api_delete' : 'api_restore', tipoOf(r), yearOf(r), r.id);
+    S.rows = S.mode === 'pending' ? await run('api_byEstado', 'PROCESO', true) : rr; fillDips(); render(); toast(del ? 'Registro eliminado' : 'Registro restaurado'); }
   catch (e) { toast(e.message, true); }
 }
 
@@ -386,10 +503,36 @@ $('#view').addEventListener('click', e => {
   S.view = b.dataset.v; document.querySelectorAll('#view button').forEach(x => x.setAttribute('aria-pressed', x === b)); render();
 });
 $('#content').addEventListener('click', e => {
+  const so = e.target.closest('[data-sort]');
+  if (so) { const c = cfOf(so.dataset.d); c.dir = c.sort === so.dataset.sort ? -c.dir : 1; c.sort = so.dataset.sort;
+    const sec = sectionOf(so.dataset.d); sec.querySelector('thead').outerHTML = theadHtml(so.dataset.d); refreshTable(so.dataset.d); return; }
+  const cp = e.target.closest('[data-copy]');
+  if (cp) return copyRows(tableRows(cp.dataset.copy));
   const b = e.target.closest('[data-a]'); if (!b) return;
-  act(b.dataset.a, Number(b.closest('tr').dataset.id));
+  act(b.dataset.a, b.closest('tr').dataset.k);
 });
 $('#btnNew').addEventListener('click', () => S.year ? openForm() : toast('Primero crea una gestión', true));
+$('#content').addEventListener('input', e => {
+  const i = e.target.closest('.cf-cod'); if (!i) return;
+  cfOf(i.dataset.d).cod = i.value; i.classList.toggle('active', !!i.value);
+  clearTimeout(i.t); i.t = setTimeout(() => refreshTable(i.dataset.d), 120);
+});
+$('#content').addEventListener('change', e => {
+  const s2 = e.target.closest('.cf-est'); if (!s2) return;
+  cfOf(s2.dataset.d).est = s2.value; s2.classList.toggle('active', !!s2.value); refreshTable(s2.dataset.d);
+});
+async function showPending(fresh) {
+  setMode('pending'); S.dip = ''; S.est = ''; S.q = ''; $('#q').value = '';
+  loading('Buscando certificados EN PROCESO en todas las gestiones…');
+  try { S.rows = await run('api_byEstado', 'PROCESO', !!fresh); labels(); fillDips(); render(); }
+  catch (e) { setMode('sheet'); $('#content').innerHTML = `<div class="panel empty"><h3>Error</h3><p>${esc(e.message)}</p></div>`; }
+}
+$('#btnPend').addEventListener('click', () => {
+  if (S.mode === 'pending') return S.year ? loadYear(S.year) : (setMode('sheet'), S.rows = [], fillDips(), render());
+  showPending(false);
+});
+$('#stats').addEventListener('click', e => { if (e.target.closest('#btnRefresh')) showPending(true); });
+$('#btnCopyAll').addEventListener('click', () => copyRows(Object.keys(S.groups).sort().flatMap(tableRows)));
 $('#dSave').addEventListener('click', save);
 $('#dCancel').addEventListener('click', () => $('#dlg').close());
 $('#dBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') save(); });
@@ -398,7 +541,7 @@ $('#btnYear').addEventListener('click', async () => {
   const y = prompt('Año de la nueva gestión (se creará la hoja ' + S.tipo + '-AAAA):', new Date().getFullYear());
   if (!y) return;
   try {
-    S.sheets = await run('api_createYear', S.tipo, y); S.year = Number(y); S.rows = []; S.dip = '';
+    setMode('sheet'); S.sheets = await run('api_createYear', S.tipo, y); S.year = Number(y); S.rows = []; S.dip = '';
     fillYears(); fillDips(); render(); toast('Hoja ' + S.tipo + '-' + y + ' creada');
   } catch (e) { toast(e.message, true); }
 });
