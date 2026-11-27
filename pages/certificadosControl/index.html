@@ -133,6 +133,11 @@ tr.filters th{background:#fff;padding:6px 14px 8px;border-bottom:1px solid var(-
 .chip.btn-chip{cursor:pointer;background:#fff}
 .chip.btn-chip:hover{background:#F3F6F9}
 .hoja{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;white-space:nowrap;color:var(--ink2)}
+.nota{font-weight:600;font-size:.85rem;white-space:nowrap}
+.nota.none{color:var(--ink2);font-weight:400}
+a.lnk{display:inline-flex;gap:5px;align-items:center;color:var(--brand);font-weight:600;font-size:.85rem;text-decoration:none;white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:4px 10px;background:#fff}
+a.lnk:hover{background:#E6F2F5;border-color:var(--brand)}
+.sin{color:var(--ink2)}
 body.pending .seg,body.pending #est,body.pending #btnNew{display:none}
 @media (max-width:900px){.toolbar{position:static}.d-body{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -187,6 +192,10 @@ body.pending .seg,body.pending #est,body.pending #btnNew{display:none}
     <div class="fld"><label for="fGes">Gestión (periodo)</label><input id="fGes" placeholder="1/2025"></div>
     <div class="fld full"><label for="fCod">Código</label><input id="fCod" class="up" placeholder="USIP-EP-DIP-DPPP9-A-2025 Nº 001">
       <div class="hint">Debe ser único. Déjalo vacío si aún no tiene código (se guarda como N/A).</div></div>
+    <div class="fld"><label for="fNota">Nota interna solicitada</label><input id="fNota" class="up" placeholder="Ej. NI-045/2026" autocomplete="off">
+      <div class="hint">Nota interna bajo la cual se solicitó el certificado (opcional).</div></div>
+    <div class="fld"><label for="fEnl">Enlace (Drive)</label><input id="fEnl" type="url" placeholder="https://drive.google.com/..." autocomplete="off">
+      <div class="hint">Enlace al certificado en Drive (opcional).</div></div>
     <div class="fld full"><label for="fObs">Observación</label><textarea id="fObs" rows="2"></textarea></div>
   </div>
   <div class="d-foot">
@@ -312,19 +321,27 @@ function sortKey(r, k) {
   if (k === 'codigo') return norm(r.codigo === 'N/A' ? '~' : r.codigo);
   if (k === 'estado') return norm(r.estado);
   if (k === 'hoja') return tipoOf(r) + String(9999 - yearOf(r));
+  if (k === 'nota') return norm(r.nota);
+  if (k === 'programa') return norm(r.diplomado);
   return r.id;
 }
 function cmp(a, b) {
   return (typeof a === 'number' && typeof b === 'number') ? a - b : String(a).localeCompare(String(b), 'es', { numeric: true });
 }
-function cfOf(d) { return S.cf[d] ||= { cod: '', est: '', sort: S.mode === 'pending' ? 'hoja' : 'id', dir: 1 }; }
-/** Filas de una tabla: filtros de columna + orden. */
+function cfOf(d) { return S.cf[d] ||= { cod: '', est: '', nota: '', sort: S.mode === 'pending' ? 'nombre' : 'id', dir: 1 }; }
+/** Filas de una tabla: filtros de columna + orden. Al ordenar por nota, las que no tienen nota siempre van al final. */
 function tableRows(d) {
-  const c = cfOf(d), ct = norm(c.cod).trim();
+  const c = cfOf(d), ct = norm(c.cod).trim(), cn = norm(c.nota).trim();
   return (S.groups[d] || []).filter(r =>
-    (!c.est || r.estado === c.est) && (!ct || norm(r.codigo).includes(ct))
-  ).sort((a, b) => c.dir * cmp(sortKey(a, c.sort), sortKey(b, c.sort)) || a.id - b.id);
+    (!c.est || r.estado === c.est) && (!ct || norm(r.codigo).includes(ct)) && (!cn || norm(r.nota).includes(cn))
+  ).sort((a, b) => {
+    if (c.sort === 'nota' && !a.nota !== !b.nota) return a.nota ? -1 : 1;
+    return c.dir * cmp(sortKey(a, c.sort), sortKey(b, c.sort))
+      || cmp(sortKey(a, 'nombre'), sortKey(b, 'nombre')) || a.id - b.id;
+  });
 }
+const SIN_NOTA = 'SIN NOTA INTERNA';
+const nCols = () => S.mode === 'pending' ? 11 : 10;
 function theadHtml(d) {
   const c = cfOf(d), pend = S.mode === 'pending';
   const th = (k, label) => {
@@ -333,15 +350,20 @@ function theadHtml(d) {
   };
   const ests = [...new Set((S.groups[d] || []).map(r => r.estado).filter(Boolean))].sort();
   const cnt = e => S.groups[d].filter(r => r.estado === e).length;
-  const empty = '<th></th>';
-  return `<thead>
-    <tr>${th('id', 'ID')}${th('nombre', 'Titular')}${th('codigo', 'Código')}${th('estado', 'Estado')}${pend ? th('hoja', 'Hoja') : ''}<th>Periodo</th><th>Observación</th><th>Fechas</th><th></th></tr>
-    <tr class="filters"><th></th><th></th>
-      <th><input class="cf cf-cod ${c.cod ? 'active' : ''}" data-d="${esc(d)}" value="${esc(c.cod)}" placeholder="Filtrar código…" aria-label="Filtrar por código"></th>
-      <th><select class="cf cf-est ${c.est ? 'active' : ''}" data-d="${esc(d)}" aria-label="Filtrar por estado"><option value="">Todos</option>${ests.map(e => `<option value="${esc(e)}" ${e === c.est ? 'selected' : ''}>${esc(e)} (${cnt(e)})</option>`).join('')}</select></th>
-      ${pend ? empty : ''}${empty}${empty}${empty}${empty}</tr></thead>`;
+  const fCod = `<input class="cf cf-cod ${c.cod ? 'active' : ''}" data-d="${esc(d)}" value="${esc(c.cod)}" placeholder="Filtrar código…" aria-label="Filtrar por código">`;
+  const fEst = `<select class="cf cf-est ${c.est ? 'active' : ''}" data-d="${esc(d)}" aria-label="Filtrar por estado"><option value="">Todos</option>${ests.map(e => `<option value="${esc(e)}" ${e === c.est ? 'selected' : ''}>${esc(e)} (${cnt(e)})</option>`).join('')}</select>`;
+  const fNota = `<input class="cf cf-nota ${c.nota ? 'active' : ''}" data-d="${esc(d)}" value="${esc(c.nota)}" placeholder="Filtrar nota…" aria-label="Filtrar por nota interna">`;
+  const plain = label => ({ h: `<th>${label}</th>`, f: '' });
+  const srt = (k, label, f) => ({ h: th(k, label), f: f || '' });
+  const cols = pend
+    ? [srt('id', 'ID'), srt('nombre', 'Titular'), srt('programa', 'Programa'), srt('codigo', 'Código', fCod),
+       srt('estado', 'Estado', fEst), srt('hoja', 'Hoja'), plain('Enlace'), plain('Periodo'), plain('Observación'), plain('Fechas'), plain('')]
+    : [srt('id', 'ID'), srt('nombre', 'Titular'), srt('codigo', 'Código', fCod), srt('estado', 'Estado', fEst), srt('nota', 'Nota interna', fNota),
+       plain('Enlace'), plain('Periodo'), plain('Observación'), plain('Fechas'), plain('')];
+  return `<thead><tr>${cols.map(x => x.h).join('')}</tr>
+    <tr class="filters">${cols.map(x => `<th>${x.f}</th>`).join('')}</tr></thead>`;
 }
-function bodyHtml(d) { return tableRows(d).map(rowHtml).join('') || `<tr><td colspan="9" class="empty" style="padding:22px">Ningún registro coincide con los filtros de esta tabla.</td></tr>`; }
+function bodyHtml(d) { return tableRows(d).map(rowHtml).join('') || `<tr><td colspan="${nCols()}" class="empty" style="padding:22px">Ningún registro coincide con los filtros de esta tabla.</td></tr>`; }
 function countLabel(d) {
   const n = tableRows(d).length, t = S.groups[d].length;
   return (n === t ? t : n + ' de ' + t) + ' ' + (t === 1 ? 'emisión' : 'emisiones');
@@ -361,7 +383,7 @@ function render() {
     if (!pend && S.view === 'eliminados' && !r.eliminacion) return false;
     if (S.dip && r.diplomado !== S.dip) return false;
     if (S.est && r.estado !== S.est) return false;
-    const hay = norm(r.nombres + ' ' + r.apellidos + ' ' + r.codigo + ' ' + r.diplomado);
+    const hay = norm(r.nombres + ' ' + r.apellidos + ' ' + r.codigo + ' ' + r.diplomado + ' ' + (r.nota || ''));
     return tokens.every(t => hay.includes(t));
   });
 
@@ -371,6 +393,7 @@ function render() {
     $('#stats').innerHTML =
       `<span class="chip">Vista <b>EN PROCESO · todas las gestiones</b></span>` +
       `<span class="chip">Total <b>${S.rows.length}</b></span>` +
+      `<span class="chip">Sin nota interna <b>${S.rows.filter(r => !r.nota).length}</b></span>` +
       Object.keys(byHoja).sort().reverse().map(k => `<span class="chip">${k} <b>${byHoja[k]}</b></span>`).join('') +
       `<span class="chip">Mostrando <b>${rows.length}</b></span>` +
       `<span class="chip btn-chip" id="btnRefresh" role="button" tabindex="0" title="Volver a leer la hoja">↻ Actualizar</span>`;
@@ -393,8 +416,9 @@ function render() {
   }
 
   S.groups = {};
-  rows.forEach(r => (S.groups[r.diplomado || 'SIN ' + (pend ? 'PROGRAMA' : sing().toUpperCase())] ||= []).push(r));
-  $('#content').innerHTML = Object.keys(S.groups).sort().map(d => `<section data-d="${esc(d)}">
+  if (pend) rows.forEach(r => (S.groups[r.nota || SIN_NOTA] ||= []).push(r)); // una tabla por nota interna
+  else rows.forEach(r => (S.groups[r.diplomado || 'SIN ' + sing().toUpperCase()] ||= []).push(r));
+  $('#content').innerHTML = Object.keys(S.groups).sort(pend ? (a, b) => (a === SIN_NOTA) - (b === SIN_NOTA) || cmp(a, b) : undefined).map(d => `<section data-d="${esc(d)}">
       <div class="dip-head"><h2>${esc(d)}</h2>
         <div class="dip-tools"><span class="dip-count">${countLabel(d)}</span>
         <button class="btn ghost sm" data-copy="${esc(d)}" title="Copiar nombres y códigos de esta tabla (para Excel o Word)">⧉ Copiar tabla</button></div></div>
@@ -427,12 +451,21 @@ async function copyRows(list) {
 
 function rowHtml(r) {
   const del = !!r.eliminacion;
+  const pend = S.mode === 'pending';
+  const tdId = `<td class="id">${r.id}</td>`;
+  const tdNota = `<td class="nota ${r.nota ? '' : 'none'}">${r.nota ? esc(r.nota) : 'Sin nota'}</td>`;
+  const tdName = `<td class="name"><b>${esc(r.nombres)}</b><small>${esc(r.apellidos)}</small></td>`;
+  const tdCode = `<td class="code">${esc(r.codigo)}</td>`;
+  const tdEst = `<td>${estadoBadge(r.estado)}</td>`;
+  const tdLink = `<td>${/^https?:\/\//i.test(r.enlace || '')
+    ? `<a class="lnk" href="${esc(r.enlace)}" target="_blank" rel="noopener noreferrer" title="Abrir certificado en Drive">↗ Drive</a>`
+    : '<span class="sin">—</span>'}</td>`;
+  const head = pend
+    ? tdId + tdName + `<td>${esc(r.diplomado)}</td>` + tdCode + tdEst + `<td class="hoja">${tipoOf(r)}-${yearOf(r)}</td>`
+    : tdId + tdName + tdCode + tdEst + tdNota;
   return `<tr class="${del ? 'deleted' : ''}" data-k="${rk(r)}">
-    <td class="id">${r.id}</td>
-    <td class="name"><b>${esc(r.nombres)}</b><small>${esc(r.apellidos)}</small></td>
-    <td class="code">${esc(r.codigo)}</td>
-    <td>${estadoBadge(r.estado)}</td>
-    ${S.mode === 'pending' ? `<td class="hoja">${tipoOf(r)}-${yearOf(r)}</td>` : ''}
+    ${head}
+    ${tdLink}
     <td>${esc(r.gestion)}</td>
     <td class="obs">${esc(r.observacion)}</td>
     <td class="dates">Creado: ${esc(r.creacion || '—')}<br>Modificado: ${esc(r.modificacion || '—')}${del ? `<br><span class="del">Eliminado: ${esc(r.eliminacion)}</span>` : ''}</td>
@@ -444,7 +477,7 @@ function rowHtml(r) {
 }
 
 /* ---------- Formulario ---------- */
-const F = { nom: '#fNom', ape: '#fApe', dip: '#fDip', est: '#fEst', ges: '#fGes', cod: '#fCod', obs: '#fObs' };
+const F = { nom: '#fNom', ape: '#fApe', dip: '#fDip', est: '#fEst', ges: '#fGes', cod: '#fCod', obs: '#fObs', nota: '#fNota', enl: '#fEnl' };
 function openForm(rec) {
   S.editing = rec || null;
   $('#dTitle').textContent = (rec ? 'Modificar emisión · ' : 'Nueva emisión · ') + sing(rec && tipoOf(rec));
@@ -453,11 +486,13 @@ function openForm(rec) {
   $(F.dip).value = rec?.diplomado || S.dip || ''; $(F.est).value = rec?.estado || 'PENDIENTES ADMINISTRATIVOS';
   $(F.ges).value = rec?.gestion || ('1/' + S.year); $(F.cod).value = rec?.codigo && rec.codigo !== 'N/A' ? rec.codigo : '';
   $(F.obs).value = rec?.observacion || '';
+  $(F.nota).value = rec?.nota || ''; $(F.enl).value = rec?.enlace || '';
   $('#dlg').showModal(); $(F.nom).focus();
 }
 async function save() {
   const d = { id: S.editing?.id, nombres: $(F.nom).value, apellidos: $(F.ape).value, diplomado: $(F.dip).value,
-    estado: $(F.est).value, gestion: $(F.ges).value, codigo: $(F.cod).value, observacion: $(F.obs).value };
+    estado: $(F.est).value, gestion: $(F.ges).value, codigo: $(F.cod).value, observacion: $(F.obs).value,
+    nota: $(F.nota).value, enlace: $(F.enl).value };
   const b = $('#dSave'); b.disabled = true; b.innerHTML = '<span class="spin"></span> Guardando';
   $('#dErr').hidden = true;
   try {
@@ -513,8 +548,8 @@ $('#content').addEventListener('click', e => {
 });
 $('#btnNew').addEventListener('click', () => S.year ? openForm() : toast('Primero crea una gestión', true));
 $('#content').addEventListener('input', e => {
-  const i = e.target.closest('.cf-cod'); if (!i) return;
-  cfOf(i.dataset.d).cod = i.value; i.classList.toggle('active', !!i.value);
+  const i = e.target.closest('.cf-cod, .cf-nota'); if (!i) return;
+  cfOf(i.dataset.d)[i.classList.contains('cf-nota') ? 'nota' : 'cod'] = i.value; i.classList.toggle('active', !!i.value);
   clearTimeout(i.t); i.t = setTimeout(() => refreshTable(i.dataset.d), 120);
 });
 $('#content').addEventListener('change', e => {
